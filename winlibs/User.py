@@ -1,7 +1,8 @@
 import win32net, win32security
 from datetime import datetime, timedelta, date
 from pyad import aduser
-from ADQuery import query
+
+from .ADQuery import query
 
 class WinUser:
 
@@ -18,48 +19,48 @@ class WinUser:
             raise ValueError('Username is required when domain is used.')
         else:
             raise ValueError('SID or Username is required to initialize WinUser')
-        self._name = userdata['name']
+        self.name = userdata['name']
         self._password=userdata['password']
-        self._password_age = userdata['password_age']
-        self._password_last_changed = (datetime.now() - timedelta(seconds=userdata['password_age'])).date()
+        self.password_age = userdata['password_age']
+        self.password_last_changed = (datetime.now() - timedelta(seconds=userdata['password_age'])).date()
         if userdata['priv'] == 0:
-            self._user_type = 'Guest'
+            self.user_type = 'Guest'
         elif userdata['priv'] == 1:
-            self._user_type = 'User'
+            self.user_type = 'User'
         elif userdata['priv'] == 2:
-            self._user_type = 'Administrator'
-        self._home_dir = userdata['home_dir']
-        self._comment = userdata['comment']
-        self._full_name = userdata['full_name']
-        self._usr_comment = userdata['usr_comment']
-        self._parms = userdata['parms']
-        self._workstations = userdata['workstations']
-        self._last_logon = datetime.utcfromtimestamp(userdata['last_logon'])
-        self._last_logoff = userdata['last_logoff']
-        self._expires = datetime.utcfromtimestamp(userdata['acct_expires'])
-        self._max_storage = userdata['max_storage']
-        self._units_per_week = userdata['units_per_week']
-        self._logon_hours = userdata['logon_hours']
-        self._bad_pw_count = userdata['bad_pw_count']
-        self._num_logons = userdata['num_logons']
-        self._logon_server = userdata['logon_server']
-        self._country_code = userdata['country_code']
-        self._code_page = userdata['code_page']
+            self.user_type = 'Administrator'
+        self.home_dir = userdata['home_dir']
+        self.comment = userdata['comment']
+        self.full_name = userdata['full_name']
+        self.usr_comment = userdata['usr_comment']
+        self.parms = userdata['parms']
+        self.workstations = userdata['workstations']
+        self.last_logon = datetime.utcfromtimestamp(userdata['last_logon'])
+        self.last_logoff = userdata['last_logoff']
+        self.expires = datetime.utcfromtimestamp(userdata['acct_expires'])
+        self.max_storage = userdata['max_storage']
+        self.units_per_week = userdata['units_per_week']
+        self.logon_hours = userdata['logon_hours']
+        self.bad_pw_count = userdata['bad_pw_count']
+        self.num_logons = userdata['num_logons']
+        self.logon_server = userdata['logon_server']
+        self.country_code = userdata['country_code']
+        self.code_page = userdata['code_page']
         self.__SID = userdata['user_sid']
-        self._primary_group =None
-        self._profile = userdata['profile']
-        self._home_dir_drive = userdata['home_dir_drive']
-        self._password_is_expired = userdata['password_expired'] != 0
+        self.primary_group =None
+        self.profile = userdata['profile']
+        self.home_dir_drive = userdata['home_dir_drive']
+        self.password_is_expired = userdata['password_expired'] != 0
 
         self.__aduser=None
-        if self._full_name:
+        if self.full_name:
             try:
-                self.__aduser = WinUser.__getADUserByCN(self._full_name)
+                self.__aduser = WinUser.__getADUserByCN(self.full_name)
             except:
                 pass
-        if not self.__aduser and self._name:
+        if not self.__aduser and self.name:
             try:
-                self.__aduser = WinUser.__getADUserBySAM(self._name)
+                self.__aduser = WinUser.__getADUserBySAM(self.name)
             except:
                 pass
         if self.__aduser:
@@ -68,12 +69,18 @@ class WinUser:
             self.__attributes={}
             for attr in self.__aduser.get_allowed_attributes():
                 self.__attributes[attr] = self.__aduser.get_attribute(attr)
+        # print(type(self.__aduser))
         # for i in dir(self.__aduser):
         #     print(i)
 
-    def __setattr__(self, name, value):
-        pass
-
+    def set_password(self, password):
+        if self.__aduser:
+            print(self.__aduser.set_password(password))
+        else:
+            import win32com, socket
+            adsi = win32com.client.Dispatch('ADsNameSpaces')
+            user = adsi.GetObject("", "WinNT://%s/%s,user"%(socket.gethostname(), self.name))
+            user.SetPassword(password)
 
     @property
     def SID(self):
