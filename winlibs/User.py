@@ -1,6 +1,7 @@
 import win32net, win32security
 from datetime import datetime, timedelta, date
 from pyad import aduser
+import win32com, socket
 
 from .ADQuery import query
 
@@ -77,10 +78,18 @@ class WinUser:
         if self.__aduser:
             print(self.__aduser.set_password(password))
         else:
-            import win32com, socket
             adsi = win32com.client.Dispatch('ADsNameSpaces')
             user = adsi.GetObject("", "WinNT://%s/%s,user"%(socket.gethostname(), self.name))
             user.SetPassword(password)
+
+    def force_pwd_change_on_login(self):
+        if self.__aduser:
+            self.__aduser.force_pwd_change_on_login()
+        else:
+            adsi = win32com.client.Dispatch('ADsNameSpaces')
+            user = adsi.GetObject("", "WinNT://%s/%s,user"%(socket.gethostname(), self.name))
+            user.Put("PasswordExpired", 1)
+            user.SetInfo()
 
     @property
     def SID(self):
