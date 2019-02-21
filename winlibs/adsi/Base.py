@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
+from abc import abstractmethod
 from builtins import object
 import sys
 
@@ -43,7 +44,7 @@ class ADSIBaseObject():
         ("default_port", "port"),
         ("default_username", "username"),
         ("default_password", "password"),
-        ("default_protocol", "protocol")
+        ("default_protocol", "protocol"),
         ("default_authentication_flag", "authentication_flag"),
         ("default_ssl", "ssl")
     ]
@@ -72,6 +73,13 @@ class ADSIBaseObject():
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         self._adsi_obj=None
         self._adsi_path=None
+        self._server=None
+        self._port=None
+        self._username=None
+        self._password=None
+        self._protocol=None
+        self._authentication_flag=None
+        self._domain=None
         if adsi_com_object:
             self._adsi_obj = adsi_com_object
         elif identifier:
@@ -81,25 +89,32 @@ class ADSIBaseObject():
         else:
             raise Exception("COM Object or Identifier is required to create an ADSIBaseObject")
 
-    def __set_adsi_obj(self):
-        raise NotImplementedError()
-
-    def _set_identifier(self):
-        raise NotImplementedError()
+    # @abstractmethod
+    # def __set_adsi_obj(self):
+    #     raise NotImplementedError()
+    #
+    # @abstractmethod
+    # def _set_identifier(self):
+    #     raise NotImplementedError()
+    #
+    # @abstractmethod
+    # def _generate_adsi_path(self, identifier):
+    #     raise NotImplementedError()
 
     def _apply_options(self, options={}):
-        self._server=options['server'] if 'server' in options else self._server = self.default_server
-        self._port=options['port'] if 'port' in options else self._port = self.default_port
-        self._username=options['username'] if 'username' in options else self._username = self.default_username
-        self._password=options['password'] if 'password' in options else self._password = self.default_password
-        self._protocol=options['protocol'] if 'protocol' in options else self._protocol = self.default_protocol
-        self._authentication_flag=options['authentication_flag'] if 'authentication_flag' in options else self._authentication_flag = self.default_authentication_flag
-        self._domain=options['domain'] if 'domain' in options else self._domain = self.default_domain
+        opts = ['server','port','username','password','protocol','authentication_flag','domain']
+        for op in opts:
+            if op in options:
+                print("Applying %s:"%op, options[op])
+                setattr(self, '_'+op, options[op])
+            else:
+                setattr(self, '_'+op, getattr(self, 'default_'+op))
 
-    def _valid_protocol(self, protocol=self.default_protocol):
+    def _valid_protocol(self, protocol):
         if not protocol.isupper() and protocol != 'WinNT':
             protocol = protocol.upper()
         if protocol == 'WINNT':
+            self._protocol =  'WinNT'
             protocol = 'WinNT'
         return ( protocol == 'LDAP' or protocol == 'GC' or protocol == 'WinNT' )
 
