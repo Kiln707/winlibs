@@ -2,7 +2,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from abc import abstractmethod
 from builtins import object
-import sys
+import sys, socket
 
 # Since we're depending on ADSI, you have to be on windows...
 if sys.platform != 'win32':
@@ -32,6 +32,7 @@ else:
     # current logged-in user belongs to.. which is generally the
     # domain under question and therefore becomes the default domain.
     _default_detected_domain = __default_ldap_obj.Get("defaultNamingContext")
+
 if _default_detected_domain:
     _default_detected_ntdomain = '.'.join([ a[3:] for a in _default_detected_domain.split(',') ])
 else:
@@ -72,6 +73,7 @@ class ADSIBaseObject():
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         self._adsi_obj=None
+        self._scheme_obj=None
         self._adsi_path=None
         self._server=None
         self._port=None
@@ -80,34 +82,32 @@ class ADSIBaseObject():
         self._protocol=None
         self._authentication_flag=None
         self._domain=None
+        self._mandatory_attributes=[]
+        self._optional_attributes=[]
         if adsi_com_object:
             self._adsi_obj = adsi_com_object
         elif identifier:
             self._apply_options(options)
             self._adsi_path = self._generate_adsi_path(identifier)
-            self.__set_adsi_obj()
+            self._set_adsi_obj()
         else:
             raise Exception("COM Object or Identifier is required to create an ADSIBaseObject")
+        self._set_attributes()
 
-    # @abstractmethod
-    # def __set_adsi_obj(self):
-    #     raise NotImplementedError()
-    #
-    # @abstractmethod
-    # def _set_identifier(self):
-    #     raise NotImplementedError()
-    #
-    # @abstractmethod
-    # def _generate_adsi_path(self, identifier):
-    #     raise NotImplementedError()
+    def _set_adsi_obj(self):
+        raise NotImplementedError()
+
+    def _generate_adsi_path(self, identifier):
+        raise NotImplementedError()
 
     def _apply_options(self, options={}):
         opts = ['server','port','username','password','protocol','authentication_flag','domain']
         for op in opts:
             if op in options:
-                print("Applying %s:"%op, options[op])
+                #print("Applying %s:"%op, options[op])
                 setattr(self, '_'+op, options[op])
             else:
+                #print("Applying default to %s"%op, getattr(self, 'default_'+op))
                 setattr(self, '_'+op, getattr(self, 'default_'+op))
 
     def _valid_protocol(self, protocol):
@@ -131,10 +131,14 @@ class ADSIBaseObject():
                 options[key] = val
         return options
 
+    def _set_attributes(self):
+        for attr in self.get_attributes():
+            setattr(self, attr, self.get(attr))
+
     def __init_schema(self):
         if self._scheme_obj is None:
             self._adsi_obj.GetInfo()
-            self._scheme_obj = self._adsi.GetObject('',self._adsi_obj.schema)
+            self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
 
     def get_mandatory_attributes(self):
         #Return a list of mandatory attributes for object. Attributes are not guaranteed to be defined
@@ -155,7 +159,10 @@ class ADSIBaseObject():
         return list(set( self.get_mandatory_attributes() + self.get_optional_attributes() ))
 
     def get(self, attrib):
-        return self._adsi_obj.Get(attrib)
+        try:
+            return self._adsi_obj.Get(attrib)
+        except:
+            return None
 
     @property
     def _safe_default_domain(self):
