@@ -104,10 +104,10 @@ class ADSIBaseObject():
         opts = ['server','port','username','password','protocol','authentication_flag','domain']
         for op in opts:
             if op in options:
-                #print("Applying %s:"%op, options[op])
+                print("Applying %s:"%op, options[op])
                 setattr(self, '_'+op, options[op])
             else:
-                #print("Applying default to %s"%op, getattr(self, 'default_'+op))
+                print("Applying default to %s"%op, getattr(self, 'default_'+op))
                 setattr(self, '_'+op, getattr(self, 'default_'+op))
 
     def _valid_protocol(self, protocol):
@@ -139,6 +139,8 @@ class ADSIBaseObject():
         if self._scheme_obj is None:
             self._adsi_obj.GetInfo()
             self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
+            for q in self._scheme_obj.Qualifiers:
+                print(q)
 
     def get_mandatory_attributes(self):
         #Return a list of mandatory attributes for object. Attributes are not guaranteed to be defined

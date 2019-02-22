@@ -1,5 +1,5 @@
-from .adsi.Base import ADSIBaseObject, _default_detected_domain
-from .adsi.utils import escape_path
+from .Base import ADSIBaseObject, _default_detected_domain
+from .utils import escape_path
 import socket
 
 class NTObject(ADSIBaseObject):
@@ -38,6 +38,7 @@ class NTObject(ADSIBaseObject):
         adsi_path = ''.join((adsi_path, escape_path(identifier)))
         if self._class:
             adsi_path = ','.join((adsi_path,self._class))
+        print(adsi_path)
         return adsi_path
 
     def _save(self):
@@ -45,7 +46,7 @@ class NTObject(ADSIBaseObject):
 
 
 class NTUser(NTObject):
-    _class = 'User'
+    # _class = 'User'
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super().__init__(identifier, adsi_com_object, options)

@@ -1,4 +1,4 @@
-from winlibs.NTObjects import NTUser
+from winlibs.adsi.NTObjects import NTUser
 
-user = NTUser('jleal4')
+user = NTUser('testing')
 print(user.FullName)
