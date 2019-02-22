@@ -33,7 +33,6 @@ class NTObject(ADSIBaseObject):
                 adsi_path = ':'.join((adsi_path, str(self._port)))
         else:
             adsi_path = ''.join((adsi_path,socket.gethostname()))
-
         adsi_path =''.join((adsi_path, '/'))
         adsi_path = ''.join((adsi_path, escape_path(identifier)))
         if self._class:
@@ -44,15 +43,30 @@ class NTObject(ADSIBaseObject):
     def _save(self):
         self._adsi_obj.SetInfo()
 
+class NTComputer(NTObject):
+    _class = 'Computer'
+    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+        super().__init__(identifier, adsi_com_object, options)
+
+    def shutdown(self, reboot=False):
+        self._adsi_obj.Shutdown(reboot)
+
+    def status(self):
+        pass
+
+
 
 class NTUser(NTObject):
-    # _class = 'User'
+    _class = 'User'
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super().__init__(identifier, adsi_com_object, options)
 
+    def change_password(self, old_password, new_password):
+        self._adsi_obj.SetPassword(password)
+
+    def groups(self):
+        pass
+
     def set_password(self, password):
         self._adsi_obj.SetPassword(password)
-        self._save()
-
-    # def
