@@ -164,6 +164,9 @@ class ADSIBaseObject():
         except:
             return None
 
+    def save(self):
+        self._adsi_obj.SetInfo()
+
     @property
     def _safe_default_domain(self):
         if self.default_domain:
@@ -179,3 +182,27 @@ class ADSIBaseObject():
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
+
+
+class IContainer(ADSIBaseObject):
+    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+        super().__init__(identifier, adsi_com_object, options)
+
+    def copy_here(self, obj_path, new_name=None):
+        self._adsi_obj.CopyHere(obj_path, new_name)
+
+    def create(self, class_type, name):
+        print("Creating %s with name %s"%(class_type, name))
+        return self._adsi_obj.Create(class_type, name)
+
+    def delete(self, class_type, name):
+        self._adsi_obj.Delete(class_type, name)
+
+    # def get_new_enum(self):
+    #     return self._adsi_obj.get_NewEnum()
+
+    def get_object(self, class_type, name):
+        return self._adsi_obj.GetObject(class_type, name)
+
+    def move_here(self, source, new_name=None):
+        self._adsi_obj.MoveHere(source, new_name)

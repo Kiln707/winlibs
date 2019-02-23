@@ -1,4 +1,4 @@
-from .Base import ADSIBaseObject, _default_detected_domain
+from .Base import ADSIBaseObject, _default_detected_domain, IContainer
 from .utils import escape_path
 import socket
 
@@ -40,21 +40,21 @@ class NTObject(ADSIBaseObject):
         print(adsi_path)
         return adsi_path
 
-    def _save(self):
-        self._adsi_obj.SetInfo()
+class NTDomain(NTObject, IContainer):
+    _class = 'Domain'
+    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+        super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
-class NTComputer(NTObject):
+class NTComputer(NTObject, IContainer):
     _class = 'Computer'
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super().__init__(identifier, adsi_com_object, options)
+        super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
     def shutdown(self, reboot=False):
         self._adsi_obj.Shutdown(reboot)
 
     def status(self):
-        pass
-
-
+        return self._adsi_obj.Status()
 
 class NTUser(NTObject):
     _class = 'User'
@@ -70,3 +70,17 @@ class NTUser(NTObject):
 
     def set_password(self, password):
         self._adsi_obj.SetPassword(password)
+
+class NTFileService(NTObject, IContainer):
+    _class = 'FileService'
+    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+        super().__init__(identifier, adsi_com_object, options)
+
+    def _resources(self):
+        return self._adsi_obj.Resources()
+
+    def _sessions(self):
+        pass
+
+    def sessions(self):
+        pass
