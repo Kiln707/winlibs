@@ -56,20 +56,27 @@ class NTComputer(NTObject, IContainer):
     def status(self):
         return self._adsi_obj.Status()
 
+class Group(NTObject):
+    _class = 'Group'
+
+    def _add(self, user):
+        self._adsi_obj.Add(user)
+
+    def _is_member(self, user):
+        self._adsi_obj.IsMember(user)
+
+    def _members(self):
+        pass
+
+    def _remove(self, user):
+        pass
+
 class NTUser(NTObject):
-    _class = 'User'
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super().__init__(identifier, adsi_com_object, options)
 
-    def change_password(self, old_password, new_password):
-        self._adsi_obj.SetPassword(password)
 
-    def groups(self):
-        pass
-
-    def set_password(self, password):
-        self._adsi_obj.SetPassword(password)
 
 class NTFileService(NTObject, IContainer):
     _class = 'FileService'
@@ -84,3 +91,8 @@ class NTFileService(NTObject, IContainer):
 
     def sessions(self):
         pass
+
+class NTFileShare(NTObject):
+    _class = 'FileShare'
+    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+        super().__init__(identifier, adsi_com_object, options)

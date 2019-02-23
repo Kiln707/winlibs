@@ -135,6 +135,9 @@ class ADSIBaseObject():
         for attr in self.get_attributes():
             setattr(self, attr, self.get(attr))
 
+    def _adsi_obj(self):
+        return self._adsi_obj
+
     def __init_schema(self):
         if self._scheme_obj is None:
             self._adsi_obj.GetInfo()
@@ -183,10 +186,7 @@ def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
 
-
 class IContainer(ADSIBaseObject):
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super().__init__(identifier, adsi_com_object, options)
 
     def copy_here(self, obj_path, new_name=None):
         self._adsi_obj.CopyHere(obj_path, new_name)
@@ -206,3 +206,36 @@ class IContainer(ADSIBaseObject):
 
     def move_here(self, source, new_name=None):
         self._adsi_obj.MoveHere(source, new_name)
+
+class IUser(ADSIBaseObject):
+    _class = 'User'
+    def change_password(self, old_password, new_password):
+        assert type(old_password) is str and type(new_password) is str, "new and old passwords must be of type string"
+        self._adsi_obj.ChangePassword(old_password, new_password)
+
+    def groups(self):
+        pass
+
+    def set_password(self, password):
+        assert type(password) is str, "Password must be string"
+        self._adsi_obj.SetPassword(password)
+
+class IGroup(ADSIBaseObject):
+        _class = 'Group'
+        def _add(self, obj):
+            self._adsi_obj.Add(obj)
+
+        def _is_member(self, obj):
+            self._adsi_obj.IsMember(obj)
+
+        def _members(self):
+            pass
+
+        def _remove(self, obj):
+            self._adsi_obj.Remove(obj)
+
+        def add(self, obj):
+            self._add(obj._adsi_obj())
+
+        def remove(self, obj):
+            self._remove(obj._adsi_obj())
