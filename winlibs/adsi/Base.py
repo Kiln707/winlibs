@@ -207,6 +207,19 @@ class IContainer(ADSIBaseObject):
     def move_here(self, source, new_name=None):
         self._adsi_obj.MoveHere(source, new_name)
 
+class ICollections(ADSIBaseObject):
+    def _add(self, obj):
+        pass
+
+    def _remove(self, obj):
+        pass
+
+    def _get_enum(self, obj):
+        pass
+
+    def get_object(self, obj):
+        pass
+
 class IUser(ADSIBaseObject):
     _class = 'User'
     def change_password(self, old_password, new_password):
