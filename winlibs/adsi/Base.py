@@ -11,6 +11,7 @@ try:
     import win32api
     import pywintypes
     import win32com.client
+    import win32net
 except ImportError:
     raise Exception("pywin32 library required. Download from http://sourceforge.net/projects/pywin32/")
 
@@ -186,69 +187,64 @@ def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
 
-class IContainer(ADSIBaseObject):
-
+###################################
+#   Common ADSI Interfaces
+###################################
+class I_Container(ADSIBaseObject):
     def copy_here(self, obj_path, new_name=None):
         self._adsi_obj.CopyHere(obj_path, new_name)
-
     def create(self, class_type, name):
         print("Creating %s with name %s"%(class_type, name))
         return self._adsi_obj.Create(class_type, name)
-
     def delete(self, class_type, name):
         self._adsi_obj.Delete(class_type, name)
-
-    # def get_new_enum(self):
-    #     return self._adsi_obj.get_NewEnum()
-
     def get_object(self, class_type, name):
         return self._adsi_obj.GetObject(class_type, name)
-
     def move_here(self, source, new_name=None):
         self._adsi_obj.MoveHere(source, new_name)
+    def __iter__(self):
+        for obj in self._adsi_obj:
+            yield obj
 
-class ICollections(ADSIBaseObject):
-    def _add(self, obj):
-        pass
-
-    def _remove(self, obj):
-        pass
-
-    def _get_enum(self, obj):
-        pass
-
-    def get_object(self, obj):
-        pass
-
-class IUser(ADSIBaseObject):
-    _class = 'User'
+class I_User(ADSIBaseObject):
     def change_password(self, old_password, new_password):
         assert type(old_password) is str and type(new_password) is str, "new and old passwords must be of type string"
         self._adsi_obj.ChangePassword(old_password, new_password)
-
-    def groups(self):
-        pass
-
+    def _groups(self):
+        return self._adsi_obj.Groups()
     def set_password(self, password):
         assert type(password) is str, "Password must be string"
         self._adsi_obj.SetPassword(password)
 
-class IGroup(ADSIBaseObject):
-        _class = 'Group'
-        def _add(self, obj):
-            self._adsi_obj.Add(obj)
+class I_Group(ADSIBaseObject):
+    def _add(self, obj):
+        self._adsi_obj.Add(obj)
+    def _is_member(self, obj):
+        return self._adsi_obj.IsMember(obj)
+    def _members(self):
+        return self._adsi_obj.Members()
+    def _remove(self, obj):
+        self._adsi_obj.Remove(obj)
+    def add(self, obj):
+        self._add(obj._adsi_obj())
+    def remove(self, obj):
+        self._remove(obj._adsi_obj())
 
-        def _is_member(self, obj):
-            self._adsi_obj.IsMember(obj)
+class I_Members(ADSIBaseObject):
+    def __iter__(self):
+        for obj in self._adsi_obj:
+            yield obj
 
-        def _members(self):
-            pass
+class I_OpenDSObject(ADSIBaseObject):
+    def _openDSObject(self, adsi_path, username, password):
+        return self._adsi_obj.OpenDSObject(adsi_path, username, password, 0)
 
-        def _remove(self, obj):
-            self._adsi_obj.Remove(obj)
-
-        def add(self, obj):
-            self._add(obj._adsi_obj())
-
-        def remove(self, obj):
-            self._remove(obj._adsi_obj())
+class I_PrintQueueOperations(ADSIBaseObject):
+    def pause(self):
+        self._adsi_obj.Pause()
+    def printJobs(self):
+        return self._adsi_obj.PrintJobs()
+    def purge(self):
+        self._adsi_obj.Purge()
+    def resume(self):
+        self._adsi_obj.Resume()
