@@ -10,8 +10,7 @@ if sys.platform != 'win32':
 try:
     import win32api
     import pywintypes
-    import win32com.client
-    import win32net
+    import win32com
 except ImportError:
     raise Exception("pywin32 library required. Download from http://sourceforge.net/projects/pywin32/")
 
@@ -39,7 +38,7 @@ if _default_detected_domain:
 else:
     _default_detected_ntdomain = socket.gethostname()
 
-class ADSIBaseObject():
+class ADSIBaseObject(object):
 
     DEFAULTS_OPTIONS_MAPPINGS = [
         ("default_server", "server"),
@@ -87,18 +86,21 @@ class ADSIBaseObject():
         self._optional_attributes=[]
         if adsi_com_object:
             self._adsi_obj = adsi_com_object
-        elif identifier:
+        else:
             self._apply_options(options)
             self._adsi_path = self._generate_adsi_path(identifier)
             self._set_adsi_obj()
-        else:
-            raise Exception("COM Object or Identifier is required to create an ADSIBaseObject")
+        # else:
+        #     raise Exception("COM Object or Identifier is required to create an ADSIBaseObject")
         self._set_attributes()
 
     def _set_adsi_obj(self):
         raise NotImplementedError()
 
     def _generate_adsi_path(self, identifier):
+        raise NotImplementedError()
+
+    def _set_object(self, obj):
         raise NotImplementedError()
 
     def _apply_options(self, options={}):
@@ -141,7 +143,6 @@ class ADSIBaseObject():
 
     def __init_schema(self):
         if self._scheme_obj is None:
-            self._adsi_obj.GetInfo()
             self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
 
     def get_mandatory_attributes(self):
@@ -160,7 +161,8 @@ class ADSIBaseObject():
 
     def get_attributes(self):
         #Get list of all allowed attributes for object. Attributes are not guaranteed to be defined
-        return list(set( self.get_mandatory_attributes() + self.get_optional_attributes() ))
+        return self.get_mandatory_attributes() + self.get_optional_attributes()
+        #return list(set( self.get_mandatory_attributes() + self.get_optional_attributes() ))
 
     def get(self, attrib):
         try:
@@ -183,6 +185,9 @@ class ADSIBaseObject():
             return self.default_ntdomain
         raise Exception("Unable to detect default NT domain Must specify search base.")
 
+    def __repr__(self):
+        return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self.Name}
+
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
@@ -191,16 +196,15 @@ def set_defaults(**kwargs):
 #   Common ADSI Interfaces
 ###################################
 class I_Container(ADSIBaseObject):
-    def copy_here(self, obj_path, new_name=None):
+    def _copy_here(self, obj_path, new_name=None):
         self._adsi_obj.CopyHere(obj_path, new_name)
-    def create(self, class_type, name):
-        print("Creating %s with name %s"%(class_type, name))
+    def _create(self, class_type, name):
         return self._adsi_obj.Create(class_type, name)
-    def delete(self, class_type, name):
+    def _delete(self, class_type, name):
         self._adsi_obj.Delete(class_type, name)
-    def get_object(self, class_type, name):
+    def _get_object(self, class_type, name):
         return self._adsi_obj.GetObject(class_type, name)
-    def move_here(self, source, new_name=None):
+    def _move_here(self, source, new_name=None):
         self._adsi_obj.MoveHere(source, new_name)
     def __iter__(self):
         for obj in self._adsi_obj:
@@ -225,6 +229,8 @@ class I_Group(ADSIBaseObject):
         return self._adsi_obj.Members()
     def _remove(self, obj):
         self._adsi_obj.Remove(obj)
+    def is_member(self, obj):
+        return self._is_member(obj._adsi_obj())
     def add(self, obj):
         self._add(obj._adsi_obj())
     def remove(self, obj):
