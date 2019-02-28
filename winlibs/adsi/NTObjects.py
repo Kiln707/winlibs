@@ -45,9 +45,11 @@ class NTObject(ADSIBaseObject):
         o = NTObject(adsi_com_object=obj)
         fingerprint = set( o.get_attributes() )
         for c,k in cls._obj_map.items():
-            if k._attributes and not fingerprint ^ k._attributes:
-                # print(fingerprint ^ k._attributes)
-                o.__class__ = k
+            if k._attributes:
+                if not fingerprint ^ k._attributes:
+                    o.__class__ = k
+        if o.__class__ == NTObject or o.__class__ == NTComputer:
+            print( o.get_attributes() )
         return o
 
 ######################################
@@ -76,8 +78,15 @@ class I_NTMembers(I_Members):
     def __iter__(self):
         for obj in self._adsi_obj:
             if obj is None:
-                return None
+                continue
+            try:
+                if obj.Get('Name') == None:
+                    continue
+            except:
+                continue
             yield NTObject.get_object(obj)
+    def get_object(self, objclass, name):
+        raise NotImplementedError()
 ######################################
 #   NT Objects
 ######################################
@@ -88,6 +97,12 @@ class NTDomain(NTObject, I_NTContainer):
         super(NTObject, self).__init__(identifier=None, adsi_com_object=adsi_com_object, options=options)
     def __iter__(self):
         return I_NTMembers.__iter__(self)
+    def get_user(self, name):
+        return NTUser(adsi_com_object=self._get_object(class_type=NTUser._class, name=name))
+    def get_group(self, name):
+        return NTGroup(adsi_com_object=self._get_object(class_type=NTGroup._class, name=name))
+    def get_computer(self, name):
+        return NTComputer(adsi_com_object=self._get_object(class_type=NTComputer._class, name=name))
 
 class NTComputer(NTObject, I_NTContainer):
     _class = 'Computer'

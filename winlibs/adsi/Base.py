@@ -161,8 +161,7 @@ class ADSIBaseObject(object):
 
     def get_attributes(self):
         #Get list of all allowed attributes for object. Attributes are not guaranteed to be defined
-        return self.get_mandatory_attributes() + self.get_optional_attributes()
-        #return list(set( self.get_mandatory_attributes() + self.get_optional_attributes() ))
+        return list(set(self.get_mandatory_attributes() + self.get_optional_attributes() ))
 
     def get(self, attrib):
         try:
@@ -186,7 +185,7 @@ class ADSIBaseObject(object):
         raise Exception("Unable to detect default NT domain Must specify search base.")
 
     def __repr__(self):
-        return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self.Name}
+        return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
 
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
