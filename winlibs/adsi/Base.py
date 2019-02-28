@@ -103,6 +103,9 @@ class ADSIBaseObject(object):
     def _set_object(self, obj):
         raise NotImplementedError()
 
+    def _schema(self):
+        raise NotImplementedError()
+
     def _apply_options(self, options={}):
         opts = ['server','port','username','password','protocol','authentication_flag','domain']
         for op in opts:
@@ -141,20 +144,24 @@ class ADSIBaseObject(object):
     def _adsi_obj(self):
         return self._adsi_obj
 
-    def __init_schema(self):
+    def get_schema(self):
+        self._init_schema()
+        return self._schema()
+
+    def _init_schema(self):
         if self._scheme_obj is None:
             self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
 
     def get_mandatory_attributes(self):
         #Return a list of mandatory attributes for object. Attributes are not guaranteed to be defined
-        self.__init_schema()
+        self._init_schema()
         if not self._mandatory_attributes:
             self._mandatory_attributes = list(self._scheme_obj.MandatoryProperties)
         return self._mandatory_attributes
 
     def get_optional_attributes(self):
         #Return a list of optional attributes for object. Attributes are not guaranteed to be defined
-        self.__init_schema()
+        self._init_schema()
         if not self._optional_attributes:
             self._optional_attributes = list(self._scheme_obj.OptionalProperties)
         return self._optional_attributes
@@ -188,7 +195,7 @@ class ADSIBaseObject(object):
         try:
             return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
         except:
-            return "< %(class)s>"%{'class':self.__class__.__name__}
+            return "< %(class)s >"%{'class':self.__class__.__name__}
 
 def set_defaults(**kwargs):
     for k, v in kwargs.items():

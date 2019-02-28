@@ -40,8 +40,11 @@ class NTObject(ADSIBaseObject):
                 adsi_path = ','.join((adsi_path,self._class))
         return adsi_path
 
+    def _schema(self):
+        return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
+
     @classmethod
-    def get_object(cls, obj):
+    def set_NTObj(cls, obj):
         o = NTObject(adsi_com_object=obj)
         fingerprint = set( o.get_attributes() )
         for c,k in cls._obj_map.items():
@@ -72,27 +75,16 @@ class I_NTFileServiceOperations(ADSIBaseObject):
         return self._adsi_obj.Sessions()
     def resources(self):
         for obj in self._resources():
-            yield NTObject.get_object(obj)
+            yield NTObject.set_NTObj(obj)
     def sessions(self):
         for obj in self._sessions():
-            yield NTObject.get_object(obj)
+            yield NTObject.set_NTObj(obj)
 class I_NTContainer(I_Container):
     def __iter__(self):
         for obj in self._adsi_obj:
-            yield NTObject.get_object(obj)
-class I_NTMembers(I_Members):
-    def __iter__(self):
-        for obj in self._adsi_obj:
-            if obj is None:
-                continue
-            # try:
-            #     if obj.Get('Name') == None:
-            #         continue
-            # except:
-            #     continue
-            yield NTObject.get_object(obj)
-    def get_object(self, objclass, name):
-        raise NotImplementedError()
+            yield NTObject.set_NTObj(obj)
+    def get_object(self, class_type, name):
+        return NTObject.set_NTObj(self._get_object(class_type, name))
 
 class Lanman_adsi_obj(NTObject):
     def _generate_adsi_path(self, identifier):
@@ -114,7 +106,7 @@ class Lanman_adsi_obj(NTObject):
         return adsi_path
     def __iter__(self):
         for obj in self._adsi_obj:
-            yield NTObject.get_object(obj)
+            yield NTObject.set_NTObj(obj)
 
 ######################################
 #   NT Objects
@@ -142,10 +134,32 @@ class NTComputer(NTObject, I_NTContainer):
         self._adsi_obj.Shutdown(reboot)
     def status(self):
         return self._adsi_obj.Status()
-    def _get_groups(self):
-        return win32net.NetGroupEnum(self._server, 2, 0)
+    def get_user(self, name):
+        return NTUser(adsi_com_object=self._get_object(class_type=NTUser._class, name=name))
+    def get_group(self, name):
+        return NTGroup(adsi_com_object=self._get_object(class_type=NTGroup._class, name=name))
+    def get_printer(self, name):
+        return NTPrintQueue(adsi_com_object=self._get_object(class_type=NTPrintQueue._class, name=name))
+    def _generate_adsi_path(self, identifier):
+        if not self.valid_protocol(self._protocol):
+            raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
+        adsi_path = ''.join((self._protocol, '://'))
+        if self._server:
+            adsi_path =''.join((adsi_path,self._server))
+            if self._port:
+                adsi_path = ':'.join((adsi_path, str(self._port)))
+        else:
+            adsi_path = ''.join((adsi_path,socket.gethostname()))
+        if identifier and self._server:
+            adsi_path =''.join((adsi_path, '/'))
+            adsi_path = ''.join((adsi_path, escape_path(identifier)))
+            if self._class:
+                adsi_path = ','.join((adsi_path,self._class))
+        print(adsi_path)
+        return adsi_path
     def __iter__(self):
         return I_NTMembers.__iter__(self)
+
 
 class NTUser(NTObject, I_User):
     _class='User'
@@ -183,17 +197,7 @@ class NTGroup(NTObject, I_Group):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
     def members(self):
         for obj in self._members():
-            yield NTObject.get_object(obj)
-
-class NTGroupCollection(NTObject, I_NTMembers):
-    _class='GroupCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
-class NTNamespace(NTObject, I_NTContainer, I_OpenDSObject):
-    _class='Namespace'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
+            yield NTObject.set_NTObj(obj)
 
 class NTPrintJob(NTObject):
     _class='PrintJob'
@@ -204,23 +208,11 @@ class NTPrintJob(NTObject):
     def resume(self):
         self._adsi_obj.Resume()
 
-class NTPrintJobsCollection(NTObject, I_NTCollection):
-    _class='PrintJobsCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
 class NTPrintQueue(NTObject, I_PrintQueueOperations):
     _class='PrintQueue'
     _attributes=set(['PrinterName', 'Priority', 'Model', 'Description', 'StartTime', 'ObjectGUID', 'Location', 'PrintDevices', 'UntilTime', 'Datatype', 'Attributes', 'DefaultJobPriority', 'HostComputer', 'JobCount', 'Action', 'Name', 'BannerPage', 'PrintProcessor'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
-class NTProperty(NTObject):
-    _class='Property'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-    def qualifiers(self):
-        return self._adsi_obj.Qualifiers()
 
 class NTResource(NTObject):
     _class='Resource'
@@ -228,17 +220,21 @@ class NTResource(NTObject):
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
-class NTResourcesCollection(NTObject, I_NTCollection):
-    _class='ResourcesCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
+    def __repr__(self):
+        return "< %(class)s User: %(name)s >"%{'class':self.__class__.__name__, 'name':self.User}
 
 class NTSchema(NTObject, I_NTContainer):
     _class='Schema'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+    def __init__(self, schema_class, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
+        self._schema_class=schema_class
     def __iter__(self):
         return I_NTMembers.__iter__(self)
+    def _init_schema(self):
+        if self._scheme_obj is None:
+            self._scheme_obj = self._adsi_obj
+    def __repr__(self):
+        return "< %(class)s for Class: %(name)s >"%{'class':self.__class__.__name__, 'name':self._schema_class}
 
 class NTService(NTObject):
     _class='Service'
@@ -262,24 +258,6 @@ class NTSession(NTObject):
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
-class NTSessionsCollection(NTObject):
-    _class='SessionsCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
-class NTSyntax(NTObject):
-    _class='Syntax'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
-class NTUserGroupCollection(NTObject, I_NTMembers):
-    _class='UserGroupCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
 NTObject._obj_map={NTDomain._class:NTDomain, NTComputer._class:NTComputer, NTUser._class:NTUser, NTFileService._class:NTFileService,
-NTFileShare._class:NTFileShare, NTGroup._class:NTGroup, NTGroupCollection._class:NTGroupCollection, NTNamespace._class:NTNamespace,
-NTPrintJob._class:NTPrintJob, NTPrintJobsCollection._class:NTPrintJobsCollection, NTPrintQueue._class:NTPrintQueue,
-NTProperty._class:NTProperty, NTResource._class:NTResource, NTResourcesCollection._class:NTResourcesCollection, NTSchema._class:NTSchema,
-NTService._class:NTService, NTSession._class:NTSession, NTSessionsCollection._class:NTSessionsCollection, NTSyntax._class:NTSyntax,
-NTUserGroupCollection._class:NTUserGroupCollection}
+NTFileShare._class:NTFileShare, NTGroup._class:NTGroup, NTPrintJob._class:NTPrintJob, NTPrintQueue._class:NTPrintQueue,
+NTResource._class:NTResource, NTService._class:NTService, NTSession._class:NTSession}
