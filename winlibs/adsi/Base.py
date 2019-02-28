@@ -185,7 +185,10 @@ class ADSIBaseObject(object):
         raise Exception("Unable to detect default NT domain Must specify search base.")
 
     def __repr__(self):
-        return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
+        try:
+            return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
+        except:
+            return "< %(class)s>"%{'class':self.__class__.__name__}
 
 def set_defaults(**kwargs):
     for k, v in kwargs.items():

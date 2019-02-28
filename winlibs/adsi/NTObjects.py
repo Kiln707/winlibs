@@ -70,6 +70,12 @@ class I_NTFileServiceOperations(ADSIBaseObject):
         return self._adsi_obj.Resources()
     def _sessions(self):
         return self._adsi_obj.Sessions()
+    def resources(self):
+        for obj in self._resources():
+            yield NTObject.get_object(obj)
+    def sessions(self):
+        for obj in self._sessions():
+            yield NTObject.get_object(obj)
 class I_NTContainer(I_Container):
     def __iter__(self):
         for obj in self._adsi_obj:
@@ -79,14 +85,37 @@ class I_NTMembers(I_Members):
         for obj in self._adsi_obj:
             if obj is None:
                 continue
-            try:
-                if obj.Get('Name') == None:
-                    continue
-            except:
-                continue
+            # try:
+            #     if obj.Get('Name') == None:
+            #         continue
+            # except:
+            #     continue
             yield NTObject.get_object(obj)
     def get_object(self, objclass, name):
         raise NotImplementedError()
+
+class Lanman_adsi_obj(NTObject):
+    def _generate_adsi_path(self, identifier):
+        if not self.valid_protocol(self._protocol):
+            raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
+        adsi_path = ''.join((self._protocol, '://'))
+        if self._server:
+            adsi_path =''.join((adsi_path,self._server))
+            if self._port:
+                adsi_path = ':'.join((adsi_path, str(self._port)))
+        else:
+            adsi_path = ''.join((adsi_path,socket.gethostname()))
+        adsi_path = ''.join((adsi_path, '/LanmanServer'))
+        if identifier:
+            adsi_path =''.join((adsi_path, '/'))
+            adsi_path = ''.join((adsi_path, escape_path(identifier)))
+            if self._class:
+                adsi_path = ','.join((adsi_path,self._class))
+        return adsi_path
+    def __iter__(self):
+        for obj in self._adsi_obj:
+            yield NTObject.get_object(obj)
+
 ######################################
 #   NT Objects
 ######################################
@@ -131,14 +160,20 @@ class NTUser(NTObject, I_User):
         for g in self._adsi_obj.Groups():
             yield NTGroup(adsi_com_object=g)
 
-class NTFileService(NTObject, I_NTFileServiceOperations):
+class NTFileService(Lanman_adsi_obj, I_NTFileServiceOperations):
     _class = 'FileService'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+    _attributes=set(['Name', 'CurrentUserCount', 'HostComputer', 'Description', 'MaxUserCount', 'Path'])
+    def __init__(self, identifier=None,computer=None, adsi_com_object=None, options={}):
+        if computer:
+            options['server']=computer
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
-class NTFileShare(NTObject):
+class NTFileShare(Lanman_adsi_obj):
     _class = 'FileShare'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
+    _attributes=set(['Name', 'HostComputer', 'Path', 'CurrentUserCount', 'Description', 'MaxUserCount'])
+    def __init__(self, identifier=None,computer=None, adsi_com_object=None, options={}):
+        if computer:
+            options['server']=computer
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
 class NTGroup(NTObject, I_Group):
@@ -152,11 +187,6 @@ class NTGroup(NTObject, I_Group):
 
 class NTGroupCollection(NTObject, I_NTMembers):
     _class='GroupCollection'
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-
-class NTLocalGroup(NTObject, I_Group):
-    _class='LocalGroup'
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
@@ -181,6 +211,7 @@ class NTPrintJobsCollection(NTObject, I_NTCollection):
 
 class NTPrintQueue(NTObject, I_PrintQueueOperations):
     _class='PrintQueue'
+    _attributes=set(['PrinterName', 'Priority', 'Model', 'Description', 'StartTime', 'ObjectGUID', 'Location', 'PrintDevices', 'UntilTime', 'Datatype', 'Attributes', 'DefaultJobPriority', 'HostComputer', 'JobCount', 'Action', 'Name', 'BannerPage', 'PrintProcessor'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
@@ -193,6 +224,7 @@ class NTProperty(NTObject):
 
 class NTResource(NTObject):
     _class='Resource'
+    _attributes=set(['User', 'Name', 'Path', 'LockCount'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
@@ -226,6 +258,7 @@ class NTService(NTObject):
 
 class NTSession(NTObject):
     _class='Session'
+    _attributes=set(['Name', 'User', 'ConnectTime', 'IdleTime', 'Computer'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
@@ -245,8 +278,8 @@ class NTUserGroupCollection(NTObject, I_NTMembers):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
 
 NTObject._obj_map={NTDomain._class:NTDomain, NTComputer._class:NTComputer, NTUser._class:NTUser, NTFileService._class:NTFileService,
-NTFileShare._class:NTFileShare, NTGroup._class:NTGroup, NTGroupCollection._class:NTGroupCollection, NTLocalGroup._class:NTLocalGroup,
-NTNamespace._class:NTNamespace, NTPrintJob._class:NTPrintJob, NTPrintJobsCollection._class:NTPrintJobsCollection, NTPrintQueue._class:NTPrintQueue,
+NTFileShare._class:NTFileShare, NTGroup._class:NTGroup, NTGroupCollection._class:NTGroupCollection, NTNamespace._class:NTNamespace,
+NTPrintJob._class:NTPrintJob, NTPrintJobsCollection._class:NTPrintJobsCollection, NTPrintQueue._class:NTPrintQueue,
 NTProperty._class:NTProperty, NTResource._class:NTResource, NTResourcesCollection._class:NTResourcesCollection, NTSchema._class:NTSchema,
 NTService._class:NTService, NTSession._class:NTSession, NTSessionsCollection._class:NTSessionsCollection, NTSyntax._class:NTSyntax,
 NTUserGroupCollection._class:NTUserGroupCollection}
