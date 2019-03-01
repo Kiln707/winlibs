@@ -67,7 +67,6 @@ class I_NTCollection(ADSIBaseObject):
         return self._adsi_obj.get_NewEnum()
     def _get_object(self, adsi_path):
         return self._adsi_obj.GetObject(adsi_path)
-
 class I_NTFileServiceOperations(ADSIBaseObject):
     def _resources(self):
         return self._adsi_obj.Resources()
@@ -85,7 +84,12 @@ class I_NTContainer(I_Container):
             yield NTObject.set_NTObj(obj)
     def get_object(self, class_type, name):
         return NTObject.set_NTObj(self._get_object(class_type, name))
-
+class I_NTPrintQueueOperations(I_PrintQueueOperations):
+    def pause(self):
+        self._adsi_obj.Pause()
+    def print_jobs(self):
+        for i in self._print_jobs():
+            yield NTPrintJob(adsi_com_object=i)
 class Lanman_adsi_obj(NTObject):
     def _generate_adsi_path(self, identifier):
         if not self.valid_protocol(self._protocol):
@@ -201,14 +205,14 @@ class NTGroup(NTObject, I_Group):
 
 class NTPrintJob(NTObject):
     _class='PrintJob'
+    _attributes=set(['TimeElapsed', 'UntilTime', 'Name', 'TotalPages', 'StartTime', 'Notify', 'HostPrintQueue', 'Priority', 'Position', 'PagesPrinted', 'TimeSubmitted', 'Description', 'Size', 'User'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-    def pause(self):
-        self._adsi_obj.Pause()
-    def resume(self):
-        self._adsi_obj.Resume()
+    def _init_schema(self):
+        if self._scheme_obj is None:
+            self._scheme_obj = self._adsi_obj
 
-class NTPrintQueue(NTObject, I_PrintQueueOperations):
+class NTPrintQueue(NTObject, I_NTPrintQueueOperations):
     _class='PrintQueue'
     _attributes=set(['PrinterName', 'Priority', 'Model', 'Description', 'StartTime', 'ObjectGUID', 'Location', 'PrintDevices', 'UntilTime', 'Datatype', 'Attributes', 'DefaultJobPriority', 'HostComputer', 'JobCount', 'Action', 'Name', 'BannerPage', 'PrintProcessor'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):

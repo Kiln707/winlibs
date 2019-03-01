@@ -156,14 +156,20 @@ class ADSIBaseObject(object):
         #Return a list of mandatory attributes for object. Attributes are not guaranteed to be defined
         self._init_schema()
         if not self._mandatory_attributes:
-            self._mandatory_attributes = list(self._scheme_obj.MandatoryProperties)
+            try:
+                self._mandatory_attributes = list(self._scheme_obj.MandatoryProperties)
+            except:
+                pass
         return self._mandatory_attributes
 
     def get_optional_attributes(self):
         #Return a list of optional attributes for object. Attributes are not guaranteed to be defined
         self._init_schema()
         if not self._optional_attributes:
-            self._optional_attributes = list(self._scheme_obj.OptionalProperties)
+            try:
+                self._optional_attributes = list(self._scheme_obj.OptionalProperties)
+            except:
+                pass
         return self._optional_attributes
 
     def get_attributes(self):
@@ -257,7 +263,7 @@ class I_OpenDSObject(ADSIBaseObject):
 class I_PrintQueueOperations(ADSIBaseObject):
     def pause(self):
         self._adsi_obj.Pause()
-    def printJobs(self):
+    def _print_jobs(self):
         return self._adsi_obj.PrintJobs()
     def purge(self):
         self._adsi_obj.Purge()

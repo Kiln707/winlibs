@@ -23,7 +23,9 @@ service = NTService('Spooler', options={'server':None})
 
 printer = computer.get_object('PrintQueue', 'Adobe PDF')
 print(printer)
-print(printer.get_attributes())
+for i in printer.print_jobs():
+    print(i)
+    print(i.get_attributes())
 
 
 # for obj in domain:
