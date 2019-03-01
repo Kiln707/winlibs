@@ -2,9 +2,9 @@ from winlibs.adsi.NTObjects import *
 from winlibs.adsi.Base import ADSIBaseObject
 
 computer = NTComputer('sswanson', options={'server':None})
-user = NTUser('sswanson')
+# user = NTUser('sswanson')
 group = NTGroup('Administrators', options={'server':None})
-domain=NTDomain(options={'server':'NTNET'})
+# domain=NTDomain(options={'server':'NTNET'})
 service = NTService('Spooler', options={'server':None})
 
 
@@ -25,7 +25,8 @@ printer = computer.get_object('PrintQueue', 'Adobe PDF')
 print(printer)
 for i in printer.print_jobs():
     print(i)
-    print(i.get_attributes())
+    for a in i.get_attributes():
+        print(a, getattr(i,a))
 
 
 # for obj in domain:

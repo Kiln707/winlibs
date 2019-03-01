@@ -208,10 +208,7 @@ class NTPrintJob(NTObject):
     _attributes=set(['TimeElapsed', 'UntilTime', 'Name', 'TotalPages', 'StartTime', 'Notify', 'HostPrintQueue', 'Priority', 'Position', 'PagesPrinted', 'TimeSubmitted', 'Description', 'Size', 'User'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-    def _init_schema(self):
-        if self._scheme_obj is None:
-            self._scheme_obj = self._adsi_obj
-
+        
 class NTPrintQueue(NTObject, I_NTPrintQueueOperations):
     _class='PrintQueue'
     _attributes=set(['PrinterName', 'Priority', 'Model', 'Description', 'StartTime', 'ObjectGUID', 'Location', 'PrintDevices', 'UntilTime', 'Datatype', 'Attributes', 'DefaultJobPriority', 'HostComputer', 'JobCount', 'Action', 'Name', 'BannerPage', 'PrintProcessor'])
