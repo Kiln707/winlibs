@@ -269,3 +269,5 @@ class I_PrintQueueOperations(ADSIBaseObject):
         self._adsi_obj.Purge()
     def resume(self):
         self._adsi_obj.Resume()
+    def __iter__(self):
+        raise NotImplementedError()

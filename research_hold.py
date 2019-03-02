@@ -8,25 +8,27 @@ group = NTGroup('Administrators', options={'server':None})
 service = NTService('Spooler', options={'server':None})
 
 
+#print(NTComputer('ISHTAR').get_object('lanmanserver'))
+ishtar = NTFileService('ishtar')
 
-# ishtar = NTComputer('ishtar')
-
-# print('sessions:')
-# for a in ishtar.resources():
-#     print(a, a.Path)
+print(ishtar.get_attributes())
+for a in ishtar:
+    for b in a:
+        print(b)
+    break
 
 
 
 # print('Members:')
 # for b in ishtar:
-#     print(b)
-
-printer = computer.get_object('PrintQueue', 'Adobe PDF')
-print(printer)
-for i in printer.print_jobs():
-    print(i)
-    for a in i.get_attributes():
-        print(a, getattr(i,a))
+# #     print(b)
+#
+# printer = computer.get_object('PrintQueue', 'Adobe PDF')
+# print(printer)
+# for i in printer.print_jobs():
+#     print(i)
+#     for a in i.get_attributes():
+#         print(a, getattr(i,a))
 
 
 # for obj in domain:
