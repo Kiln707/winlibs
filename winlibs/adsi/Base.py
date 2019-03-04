@@ -61,16 +61,6 @@ class ADSIBaseObject(object):
     default_ntdomain = _default_detected_ntdomain
     adsi_provider = _adsi_provider
 
-    #Need to move _SET_ADSI_OBJ, Different between NT and LDAP
-    # def __set_adsi_obj(self):
-    #     #Create connection to ADSI
-    #     if not self._valid_protocol():
-    #         raise Exception("Invalid protocol. Valid Protocols: LDAP, GC, WinNT")
-    #     if self.default_username and self.default_password:
-    #         _ds = self.adsi_provider.getObject('',"%s:"%self.default_protocol)
-    #     #NEED TO SETUP ENCRYPTION
-    #     self._adsi_obj = _ds.OpenDSObject()
-
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         self._adsi_obj=None
         self._scheme_obj=None
@@ -82,6 +72,7 @@ class ADSIBaseObject(object):
         self._protocol=None
         self._authentication_flag=None
         self._domain=None
+        self._ssl=None
         self._mandatory_attributes=[]
         self._optional_attributes=[]
         if adsi_com_object:
@@ -98,9 +89,6 @@ class ADSIBaseObject(object):
         raise NotImplementedError()
 
     def _generate_adsi_path(self, identifier):
-        raise NotImplementedError()
-
-    def _set_object(self, obj):
         raise NotImplementedError()
 
     def _schema(self):
@@ -150,7 +138,10 @@ class ADSIBaseObject(object):
 
     def _init_schema(self):
         if self._scheme_obj is None:
-            self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
+            try:
+                self._scheme_obj = self.adsi_provider.GetObject('',self._adsi_obj.schema)
+            except:
+                pass
 
     def get_mandatory_attributes(self):
         #Return a list of mandatory attributes for object. Attributes are not guaranteed to be defined

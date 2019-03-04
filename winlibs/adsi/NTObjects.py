@@ -16,12 +16,12 @@ class NTObject(ADSIBaseObject):
     def _set_adsi_obj(self):
         #Create connection to ADSI
         if not self._valid_protocol(self._protocol):
-            raise Exception("Invalid protocol. Valid Protocols: LDAP, GC, WinNT")
+            raise Exception("Invalid protocol. Valid Protocols: WinNT")
         self._adsi_obj = self.adsi_provider.getObject('', self._adsi_path)
-    def valid_protocol(self, protocol):
+    def _valid_protocol(self, protocol):
         return protocol == 'WinNT'
     def _generate_adsi_path(self, identifier):
-        if not self.valid_protocol(self._protocol):
+        if not self._valid_protocol(self._protocol):
             raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
         adsi_path = ''.join((self._protocol, '://'))
         if self._server:
@@ -46,8 +46,6 @@ class NTObject(ADSIBaseObject):
             if k._attributes:
                 if not fingerprint ^ k._attributes:
                     o.__class__ = k
-        if o.__class__ == NTObject or o.__class__ == NTComputer:
-            print( o.get_attributes() )
         return o
 ######################################
 #   Common Interfaces for NT Objects
@@ -79,7 +77,6 @@ class Lanman_adsi_obj(NTObject):
         adsi_path = ''.join((adsi_path, '/LanmanServer'))
         if self._class:
             adsi_path = ','.join((adsi_path,self._class))
-        print(adsi_path)
         return adsi_path
 ######################################
 #   NT Objects
@@ -101,13 +98,15 @@ class NTDomain(NTObject, I_NTContainer):
         return self._get_list(NTGroup._class)
     def get_computers(self):
         return self._get_list(NTComputer._class)
+    def get_printers(self):
+        return self._get_list(NTPrintQueue._class)
 
 class NTComputer(NTObject, I_NTContainer):
     _class = 'Computer'
     _attributes=set(['OperatingSystemVersion', 'Processor', 'Owner', 'Name', 'OperatingSystem', 'ProcessorCount', 'Division'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-        self._file
+        self._file_service=None
     def shutdown(self, reboot=False):
         self._adsi_obj.Shutdown(reboot)
     def status(self):
@@ -129,8 +128,8 @@ class NTComputer(NTObject, I_NTContainer):
     def get_services(self):
         return self._get_list(NTService._class)
     def get_shares(self):
-        fileservice = NTFileService(computer=self.Name)
-        for share in fileservice
+        self._init_file_service()
+        return self._file_service.__iter__()
     def _generate_adsi_path(self, identifier):
         if not self.valid_protocol(self._protocol):
             raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
@@ -147,6 +146,12 @@ class NTComputer(NTObject, I_NTContainer):
             if self._class:
                 adsi_path = ','.join((adsi_path,self._class))
         return adsi_path
+    def _init_file_service(self):
+        if self._file_service is None:
+            self._file_service = NTFileService(computer=self.Name.lower())
+    def get_fileservice(self):
+        self._init_file_service()
+        return self._file_service
     def __iter__(self):
         return super().__iter__()
 class NTUser(NTObject, I_User):
