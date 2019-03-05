@@ -127,7 +127,7 @@ class ADSIBaseObject(object):
 
     def _set_attributes(self):
         for attr in self.get_attributes():
-            print(self.get(attr).isSingleValued())
+            #print(self.get(attr).isSingleValued())
             setattr(self, attr, self.get(attr))
 
     def _adsi_obj(self):
@@ -171,25 +171,30 @@ class ADSIBaseObject(object):
     def _flush(self):
         self._adsi_obj.SetInfo()
 
-    ################
+    #######################
     #   Manage Attributes
-    ################
-    def _set_multivalue_attribute(self, attribute, action, value):
-        assert isinstance(action, IADS_ACTION), "Action must be instance of IADS_ACTION"
-        if not hasattr(self._adsi_obj, attribute):
-            raise InvalidAttribute(self, attribute)
-        try:
-            self._adsi_obj.putEx(action, attribute, value)
-        except:
-            raise Exception("Failed to set attribute %s"%attribute)
+    #######################
+    def has_attribute(self, attribute):
+        return hasattr(self._adsi_obj, attribute)
 
-    def _set_attribute(self, attribute, value):
-        if not hasattr(self._adsi_obj, attribute):
+    #   Normally for Multivalue attributes.
+    #   Might start to use for Multi-value attributes only in the future
+    def _set_attribute(self, attribute, action, value):
+        assert isinstance(action, IADS_ACTION), "Action must be instance of IADS_ACTION"
+        if not self.has_attribute(attribute):
             raise InvalidAttribute(self, attribute)
         try:
-            self._adsi_obj.put(attribute, value)
+            self._adsi_obj.putEx(action.value, attribute, self.__generate_list(value))
         except:
             raise Exception("Failed to set attribute %s"%attribute)
+    #
+    # def _set_attribute(self, attribute, value):
+    #     if not self.has_attribute(attribute):
+    #         raise InvalidAttribute(self, attribute)
+    #     try:
+    #         self._adsi_obj.put(attribute, value)
+    #     except:
+    #         raise Exception("Failed to set attribute %s"%attribute)
 
     def get(self, attrib):
         try:
@@ -198,14 +203,27 @@ class ADSIBaseObject(object):
             return None
 
     def set(self, attribute, value):
-        pass
+        self._set_attribute(attribute, IADS_ACTION.UPDATE, value)
 
+    def update(self, attribute, value):
+        if value in ((),[],None,''):
+            self.delete(attribute)
+        else:
+            self.set(attribute, value)
 
-    def update(self, attribute):
-        pass
+    def append(self, attribute, values):
+        difference = list( set(self.__generate_list(values)) - set(self.get_attribute(attribute)) )
+        if len(difference) != 0:
+            self._set_attribute(attribute, IADS_ACTION.APPEND, difference)
+
+    def remove(self, attribute, values):
+        difference = list( set(self.__generate_list(values)) & set(self.get_attribute(attribute)) )
+        if len(difference) != 0:
+            self._set_attribute(attribute, IADS_ACTION.DELETE, difference)
 
     def delete(self, attribute):
-        pass
+        if self.get_attribute != None:
+            self._set_attribute(attribute, IADS_ACTION.CLEAR, [])
 
     def save(self):
         self._flush()
@@ -221,6 +239,14 @@ class ADSIBaseObject(object):
         if self.default_ntdomain:
             return self.default_ntdomain
         raise Exception("Unable to detect default NT domain Must specify search base.")
+
+    def __generate_list(self, input):
+        if type(input) is list:
+            return input
+        elif type(input) in (set,tuple):
+            return list(input)
+        else:
+            return [input,]
 
     def __repr__(self):
         try:

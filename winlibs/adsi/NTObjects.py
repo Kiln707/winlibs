@@ -38,6 +38,11 @@ class NTObject(ADSIBaseObject):
         return adsi_path
     def _schema(self):
         return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
+    def save(self):
+        for attr in self.get_attributes():
+            if self.get(attr) != getattr(self, attr):
+                self.update(attr, getattr(self, attr))
+        self._flush()
     @classmethod
     def set_NTObj(cls, obj):
         o = NTObject(adsi_com_object=obj)
