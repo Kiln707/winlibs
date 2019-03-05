@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
-from abc import abstractmethod
 from builtins import object
+from enum import Enum
 import sys, socket
 
 # Since we're depending on ADSI, you have to be on windows...
@@ -127,6 +127,7 @@ class ADSIBaseObject(object):
 
     def _set_attributes(self):
         for attr in self.get_attributes():
+            print(self.get(attr).isSingleValued())
             setattr(self, attr, self.get(attr))
 
     def _adsi_obj(self):
@@ -167,14 +168,47 @@ class ADSIBaseObject(object):
         #Get list of all allowed attributes for object. Attributes are not guaranteed to be defined
         return list(set(self.get_mandatory_attributes() + self.get_optional_attributes() ))
 
+    def _flush(self):
+        self._adsi_obj.SetInfo()
+
+    ################
+    #   Manage Attributes
+    ################
+    def _set_multivalue_attribute(self, attribute, action, value):
+        assert isinstance(action, IADS_ACTION), "Action must be instance of IADS_ACTION"
+        if not hasattr(self._adsi_obj, attribute):
+            raise InvalidAttribute(self, attribute)
+        try:
+            self._adsi_obj.putEx(action, attribute, value)
+        except:
+            raise Exception("Failed to set attribute %s"%attribute)
+
+    def _set_attribute(self, attribute, value):
+        if not hasattr(self._adsi_obj, attribute):
+            raise InvalidAttribute(self, attribute)
+        try:
+            self._adsi_obj.put(attribute, value)
+        except:
+            raise Exception("Failed to set attribute %s"%attribute)
+
     def get(self, attrib):
         try:
             return self._adsi_obj.Get(attrib)
         except:
             return None
 
+    def set(self, attribute, value):
+        pass
+
+
+    def update(self, attribute):
+        pass
+
+    def delete(self, attribute):
+        pass
+
     def save(self):
-        self._adsi_obj.SetInfo()
+        self._flush()
 
     @property
     def _safe_default_domain(self):
@@ -197,6 +231,15 @@ class ADSIBaseObject(object):
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
+
+####################################
+#   ADSI Enumerations
+####################################
+class IADS_ACTION(Enum):
+    CLEAR = 1
+    UPDATE = 2
+    APPEND = 3
+    DELETE = 4
 
 ###################################
 #   Common ADSI Interfaces
