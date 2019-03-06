@@ -14,8 +14,7 @@ from pyad import pyad
 from winlibs.adsi.LDAPObjects import *
 from winlibs.adsi.NTObjects import *
 
-u = LDAPBaseObject('CN=John Doe,OU=Accounts,DC=solano,DC=cc,DC=ca,DC=us')
-
+u = ADObject('CN=John Doe,OU=Accounts,DC=solano,DC=cc,DC=ca,DC=us')
 
 print(u.get('distinguishedName'))
 
