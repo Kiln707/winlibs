@@ -369,7 +369,7 @@ class GlobalCatalogObject(LDAPBaseObject):
 ##################################################
 #   AD Based Interfaces
 ##################################################
-class I_ADContainer(ADSIBaseObject):
+class I_ADContainer(ADObject):
     def _copy_here(self, obj_path, new_name=None):
         self._adsi_obj.CopyHere(obj_path, new_name)
     def _create(self, class_type, name):
@@ -380,6 +380,27 @@ class I_ADContainer(ADSIBaseObject):
         return self._adsi_obj.GetObject(class_type, name)
     def _move_here(self, source, new_name=None):
         self._adsi_obj.MoveHere(source, new_name)
+    def move_here(self, source, new_name=None):
+        self._move_here(source.dn, new_name)
+    def get_children(self, recursive=False, filter_=None):
+        for obj in self:
+            if obj.type == 'organizationalUnit' and recursive:
+                for child in obj.get_children(recursive=recursive, filter_=filter_):
+                    yield child
+            if not filter_ or obj.__class__ in filter_:
+                yield obj
     def __iter__(self):
         for obj in self._adsi_obj:
-            yield obj
+            yield ADObject(adsi_com_object=obj)
+
+class ADDomain(I_ADContainer):
+    pass
+
+class ADComputer():
+    pass
+
+class ADUser():
+    pass
+
+class ADGroup():
+    pass
