@@ -15,9 +15,11 @@ class NTObject(ADSIBaseObject):
         super().__init__(identifier, adsi_com_object, options)
     def _set_adsi_obj(self):
         #Create connection to ADSI
-        if not self._valid_protocol(self._protocol):
-            raise Exception("Invalid protocol. Valid Protocols: WinNT")
         self._adsi_obj = self.adsi_provider.getObject('', self._adsi_path)
+    def _set_attributes(self):
+        for attr in self.get_attributes():
+            #print(self.get(attr).isSingleValued())
+            setattr(self, attr, self.get(attr))
     def _valid_protocol(self, protocol):
         return protocol == 'WinNT'
     def _generate_adsi_path(self, identifier):
@@ -254,7 +256,7 @@ class NTSchema(NTObject, I_NTContainer):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
         self._schema_class=schema_class
     def __iter__(self):
-        return I_NTMembers.__iter__(self)
+        return super().__iter__(self)
     def _init_schema(self):
         if self._scheme_obj is None:
             self._scheme_obj = self._adsi_obj
