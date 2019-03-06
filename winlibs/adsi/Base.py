@@ -73,7 +73,6 @@ class ADSIBaseObject(object):
         self._port=None
         self._username=None
         self._password=None
-        self._protocol=None
         self._authentication_flag=None
         self._domain=None
         self._ssl=None
@@ -99,7 +98,7 @@ class ADSIBaseObject(object):
         raise NotImplementedError()
 
     def _apply_options(self, options={}):
-        opts = ['server','port','username','password','protocol','authentication_flag','domain']
+        opts = ['server','port','username','password','authentication_flag','domain']
         for op in opts:
             if op in options:
                 # print("Applying %s:"%op, options[op])
@@ -107,14 +106,6 @@ class ADSIBaseObject(object):
             else:
                 # print("Applying default to %s"%op, getattr(self, 'default_'+op))
                 setattr(self, '_'+op, getattr(self, 'default_'+op))
-
-    def _valid_protocol(self, protocol):
-        if not protocol.isupper() and protocol != 'WinNT':
-            protocol = protocol.upper()
-        if protocol == 'WINNT':
-            self._protocol =  'WinNT'
-            protocol = 'WinNT'
-        return ( protocol == 'LDAP' or protocol == 'GC' or protocol == 'WinNT' )
 
     def _set_defaults(self, options):
         for (default, key) in ADSIBaseObject.DEFAULTS_OPTIONS_MAPPINGS:

@@ -8,8 +8,7 @@ class LDAPBaseObject(ADSIBaseObject):
     default_protocol=''
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        if 'protocol' in options:
-            del options['protocol']
+        self.__class__.__name__
         super().__init__(identifier, adsi_com_object, options)
 
     def _set_adsi_obj(self):
@@ -65,8 +64,6 @@ class LDAPBaseObject(ADSIBaseObject):
         pass
 
     def _generate_adsi_path(self, distinguished_name):
-        if not self._valid_protocol(self._protocol):
-            raise Exception("Invalid Protocol for. Protocol is required to be %s"%self.default_protocol)
         # Generates a proper ADsPath to be used when connecting to an active directory object or when searching active directory.
         #
         # Keyword arguments:
@@ -74,7 +71,7 @@ class LDAPBaseObject(ADSIBaseObject):
         #  - type: 'GC' (global-catalog) or 'LDAP' to determine what directory to be searched (required).
         #  - server: FQDN of domain controller if necessary to connect to a particular server (optional unless port is defined).
         #  - port: port number for directory service if not default port. If port is specified, server must be specified (optional).
-        ads_path = ''.join((self._protocol,'://'))
+        ads_path = ''.join((self.default_protocol,'://'))
         if self._server:
             ads_path = ''.join((ads_path,self._server))
             if self._port:
@@ -288,7 +285,7 @@ class ADObject(LDAPBaseObject):
         # Moves the object to a new organizationalUnit.
         # new_ou_object expects a ADContainer object where the current object will be moved to.
         try:
-            new_path = self._protocol + '://' + self.dn
+            new_path = self.default_protocol + '://' + self.dn
             new_ou_object.MoveHere(self, self.prefixed_cn)
             new_ou_object._flush()
         except:
@@ -312,7 +309,7 @@ class ADObject(LDAPBaseObject):
         try:
             if self.type in ('user', 'computer', 'group') and set_sAMAccountName:
                 self._adsi_obj.Put('sAMAccountName', new_name)
-            new_path = self._protocol+'://' + self.dn
+            new_path = self.default_protocol+'://' + self.dn
             parent.MoveHere(new_path, pcn)
             parent._flush()
         except:

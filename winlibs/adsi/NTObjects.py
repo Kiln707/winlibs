@@ -23,9 +23,7 @@ class NTObject(ADSIBaseObject):
     def _valid_protocol(self, protocol):
         return protocol == 'WinNT'
     def _generate_adsi_path(self, identifier):
-        if not self._valid_protocol(self._protocol):
-            raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
-        adsi_path = ''.join((self._protocol, '://'))
+        adsi_path = ''.join((self.default_protocol, '://'))
         if self._server:
             adsi_path =''.join((adsi_path,self._server))
             if self._port:
@@ -69,9 +67,7 @@ class I_NTContainer(I_Container):
                 yield i
 class Lanman_adsi_obj(NTObject):
     def _generate_adsi_path(self, identifier):
-        if not self.valid_protocol(self._protocol):
-            raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
-        adsi_path = ''.join((self._protocol, '://'))
+        adsi_path = ''.join((self.default_protocol, '://'))
         if self._server:
             adsi_path =''.join((adsi_path,self._server))
             if self._port:
@@ -138,9 +134,7 @@ class NTComputer(NTObject, I_NTContainer):
         self._init_file_service()
         return self._file_service.__iter__()
     def _generate_adsi_path(self, identifier):
-        if not self.valid_protocol(self._protocol):
-            raise Exception("Invalid Protocol for. Protocol is required to be WinNT")
-        adsi_path = ''.join((self._protocol, '://'))
+        adsi_path = ''.join((self.default_protocol, '://'))
         if self._server:
             adsi_path =''.join((adsi_path,self._server))
             if self._port:
