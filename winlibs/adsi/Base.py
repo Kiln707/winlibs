@@ -26,12 +26,15 @@ try:
 except:
     # If there was an error, this this computer might not be on a domain.
     print("WARN: unable to connect to default domain. Computer is likely not attached to an AD domain")
+    __default_ldap_obj = None
     _default_detected_domain = None
+    _default_detected_forest=None
 else:
     # connecting to rootDSE will connect to the domain that the
     # current logged-in user belongs to.. which is generally the
     # domain under question and therefore becomes the default domain.
     _default_detected_domain = __default_ldap_obj.Get("defaultNamingContext")
+    _default_detected_forest = __default_ldap_obj.Get("rootDomainNamingContext")
 
 if _default_detected_domain:
     _default_detected_ntdomain = '.'.join([ a[3:] for a in _default_detected_domain.split(',') ])
@@ -58,6 +61,7 @@ class ADSIBaseObject(object):
     default_protocol = ''
     default_authentication_flag = 0  # No credentials
     default_domain = _default_detected_domain
+    default_forest = _default_detected_forest
     default_ntdomain = _default_detected_ntdomain
     adsi_provider = _adsi_provider
 
@@ -113,22 +117,20 @@ class ADSIBaseObject(object):
         return ( protocol == 'LDAP' or protocol == 'GC' or protocol == 'WinNT' )
 
     def _set_defaults(self, options):
-        for (default, key) in ADBase.DEFAULTS_OPTIONS_MAPPINGS:
+        for (default, key) in ADSIBaseObject.DEFAULTS_OPTIONS_MAPPINGS:
             if key in options:
                 setattr(self, default, options[key])
 
     def _make_options(self):
         options = dict()
-        for (default, key) in ADBase.DEFAULTS_OPTIONS_MAPPINGS:
+        for (default, key) in ADSIBaseObject.DEFAULTS_OPTIONS_MAPPINGS:
             val = getattr(self, default)
             if val:
                 options[key] = val
         return options
 
     def _set_attributes(self):
-        for attr in self.get_attributes():
-            #print(self.get(attr).isSingleValued())
-            setattr(self, attr, self.get(attr))
+        raise NotImplementedError()
 
     def _adsi_obj(self):
         return self._adsi_obj
@@ -228,6 +230,80 @@ class ADSIBaseObject(object):
     def save(self):
         self._flush()
 
+    def _convert_datetime(self, adsi_time_com_obj):
+        # Converts 64-bit integer COM object representing time into a python datetime object.
+        # credit goes to John Nielsen who documented this at
+        # http://docs.activestate.com/activepython/2.6/pywin32/html/com/help/active_directory.html.
+
+        high_part = int(adsi_time_com_obj.highpart) << 32
+        low_part = int(adsi_time_com_obj.lowpart)
+        date_value = ((high_part + low_part) - 116444736000000000) // 10000000
+        #
+        # The "fromtimestamp" function in datetime cannot take a
+        # negative value, so if the resulting date value is negative,
+        # explicitly set it to 18000. This will result in the date
+        # 1970-01-01 00:00:00 being returned from this function
+        #
+        if date_value < 0:
+            date_value = 18000
+        return datetime.datetime.fromtimestamp(date_value)
+
+    def convert_bigint(self, obj):
+        # based on http://www.selfadsi.org/ads-attributes/user-usnChanged.htm
+        h, l = obj.HighPart, obj.LowPart
+        if l < 0:
+            h += 1
+        return (h << 32) + l
+
+#################################################################################################################
+#   TODO: Implement xml dump
+    def dump_to_xml(self, whitelist_attributes=[], blacklist_attributes=[]):
+        raise NotImplementedError()
+        """Dumps object and all human-readable attributes to an xml document which is returned as a string."""
+        if len(whitelist_attributes) == 0:
+            whitelist_attributes = self.get_attributes()
+        attributes = list(set(whitelist_attributes) - set(blacklist_attributes))
+
+        doc = xml.Document()
+        adobj_xml_doc = doc.createElement("ADObject")
+        adobj_xml_doc.setAttribute("objectGUID", str(self.guid).lstrip('{').rstrip('}'))
+        adobj_xml_doc.setAttribute("pyADType", self.type)
+        doc.appendChild(adobj_xml_doc)
+
+        for attribute in attributes:
+            node = doc.createElement("attribute")
+            node.setAttribute("name", attribute)
+            value = self.get_attribute(attribute,False)
+            if str(type(value)).split("'",2)[1] not in ('buffer','instance') and value is not None:
+                if type(value) is not list:
+                    try:
+                        ok_elem=True
+                        node.setAttribute("type", str(type(value)).split("'",2)[1])
+                        try:
+                            text = doc.createTextNode(str(value))
+                        except:
+                            text = doc.createTextNode(value.encode("latin-1", 'replace'))
+                        node.appendChild(text)
+                    except:
+                        print('attribute: %s not xml-able' % attribute)
+                else:
+                    node.setAttribute("type", "multiValued")
+                    ok_elem = False
+                    try:
+                        for item in value:
+                            if str(type(item)).split("'",2)[1] not in ('buffer','instance') and value is not None:
+                                valnode = doc.createElement("value")
+                                valnode.setAttribute("type", str(type(item)).split("'",2)[1])
+                                text = doc.createTextNode(str(item))
+                                valnode.appendChild(text)
+                                node.appendChild(valnode)
+                                ok_elem=True
+                    except:
+                        print('attribute: %s not xml-able' % attribute)
+                if ok_elem: adobj_xml_doc.appendChild(node)
+        return doc.toxml(encoding="UTF-8")
+    #################################################################################################################
+
     @property
     def _safe_default_domain(self):
         if self.default_domain:
@@ -250,9 +326,9 @@ class ADSIBaseObject(object):
 
     def __repr__(self):
         try:
-            return "< %(class)s Name: %(name)s >"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
+            return "<%(class)s Name: '%(name)s'>"%{'class':self.__class__.__name__, 'name':self._adsi_obj.Get('Name')}
         except:
-            return "< %(class)s >"%{'class':self.__class__.__name__}
+            return "<%(class)s>"%{'class':self.__class__.__name__}
 
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
@@ -310,11 +386,6 @@ class I_Group(ADSIBaseObject):
         self._add(obj._adsi_obj())
     def remove(self, obj):
         self._remove(obj._adsi_obj())
-
-class I_Members(ADSIBaseObject):
-    def __iter__(self):
-        for obj in self._adsi_obj:
-            yield obj
 
 class I_OpenDSObject(ADSIBaseObject):
     def _openDSObject(self, adsi_path, username, password):
