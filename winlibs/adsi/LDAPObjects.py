@@ -394,7 +394,10 @@ class I_ADContainer(ADObject):
             yield ADObject(adsi_com_object=obj)
 
 class ADDomain(I_ADContainer):
-    pass
+    def get_default_upn(self):
+        # Returns the default userPrincipalName for the domain.
+        self._adsi_obj.GetInfoEx(["canonicalName",],0)
+        return self._adsi_obj.get("canonicalName").rstrip('/')
 
 class ADComputer():
     pass

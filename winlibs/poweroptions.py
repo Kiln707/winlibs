@@ -33,9 +33,9 @@ class PowerScheme(PowerObj):
 
     def settings(self):
         for setting in self._query():
-            if 'Power Setting' in setting:
+            if 'Power Setting' in setting and 'GUID' in setting:
                 s = setting.split(' ')
-                yield PowerSetting(s[3],s[5].strip('()'))
+                yield PowerSetting(s[7], ' '.join(s[9:]).strip('(),\''))
 
     def subgroup(self):
         for setting in self._query():
