@@ -6,19 +6,31 @@ class PowerObj():
         self._GUID=guid
         self._name=name
 
-    def _run(self, cmd):
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    @staticmethod
+    def _run(cmd):
+        result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.stderr:
             raise Exception(result.stderr)
-        return result.stdout.decode('UTF-8').split('\r\n')
+        return result.stdout.decode('UTF-8')
 
-    def _query(self):
-        cmd = ' '.join([self._cmd,'/Q',self._GUID])
-        return self._run(cmd)
+    @classmethod
+    def query(cls, GUID=None):
+        if GUID:
+            cmd = ' '.join([cls._cmd,'/QUERY', GUID])
+        else:
+            cmd = ' '.join([cls._cmd,'/QUERY'])
+        return cls._run(cmd)
 
-class PowerCFG(PowerObj):
+class PowerConfig(PowerObj):
     def __init__(self):
         super().__init__(0, 'Power Configuration')
+
+    @classmethod
+    def from_str(cls, cfg_str):
+        print(cfg_str)
+        #for line in cfg_str:
+        #    print(line)
+
 
     def list(self):
         results = self._run(' '.join([self._cmd, '/L']))

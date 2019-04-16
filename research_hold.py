@@ -1,15 +1,9 @@
-from winlibs.poweroptions import PowerCFG
+import wmi
 
-
-p = PowerCFG()
-a=0
-for s in p.list():
-    #print(s._GUID, s._name)
-    for i in s.settings():
-        pass
-        print(i._GUID, i._name)
-        #break
-    break
+c = wmi.WMI()
+print(dir(c))
+for s in c.Win32_Service():
+    print(s)
 
 exit(0)
 from pyad import pyad
