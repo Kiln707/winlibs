@@ -1,9 +1,12 @@
-import wmi
-
-c = wmi.WMI()
-print(dir(c))
-for s in c.Win32_Service():
-    print(s)
+from winlibs.poweroptions import PowerConfig
+p = PowerConfig()
+a=0
+for s in p.list():
+    #print(s._GUID, s._name)
+    for i in s.subgroup():
+        print(i._GUID, i._name)
+        #break
+    break
 
 exit(0)
 from pyad import pyad
