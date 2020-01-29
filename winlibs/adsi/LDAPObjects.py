@@ -463,4 +463,27 @@ class ADUser(ADObject, I_User):
 
 class ADGroup(ADObject, I_Group):
     _class='Group'
-    #_attributes=
+    _attributes=set(['msExchMasterAccountHistory','msOrg-Leaders','ver3-ssoAppHideFromApplicationList','ver3-ssoAppAdminScriptIdentity',\
+                'ver3-ssoAppMacro5Parameters','ver3-ssoAppAdminScript','ver3-ssoAppChangeScriptType','groupType','ver3-ssoAppMacro6Identity',\
+                'ver3-ssoAppMacro6','ver3-ssoAppMacro4URI','ver3-ssoAppMacro4Parameters','ver3-ssoAppMacro9Parameters','ver3-ssoAppMacro4',\
+                'ver3-ssoPropertyBag','ver3-ssoAppMacro7Type','ver3-ssoAppMacro8','ver3-ssoAppMacro9','msSFU30PosixMember',\
+                'ver3-ssoCanViewPassword','msDS-AzObjectGuid','ver3-ssoAppAdminScriptURI','primaryGroupToken','ver3-ssoCanChangePassword',\
+                'ver3-ssoAppLaunchScriptType','ciscoEcsbuVoiceEnabled','ver3-ssoAppMacro6Parameters','ver3-ssoAppMacro8Type',\
+                'ver3-ssoAppChangeScriptIdentity','ver3-ssoAppMacro3','ver3-ssoAppAdminScriptParameters','ver3-ssoCredentialServicePublicKey',\
+                'ver3-ssoCanViewUserName','ver3-ssoPropertyBagCompressed','ver3-ssoAppLaunchScriptParameters','ver3-ssoAppAdminScriptType',\
+                'ver3-ssoAppChangeScript','ver3-ssoAppMacro7URI','ver3-ssoAppChangeScriptParameters','ver3-ssoAppMacro4Type','hideDLMembership',\
+                'ver3-ssoAppMacro5Identity','ver3-ssoAppClass','msOrg-GroupSubtypeName','msExchCoManagedByLink','ver3-ssoAppName',\
+                'ver3-ssoAppMacro9Type','dLMemberRule','ver3-ssoPropertyBagEncrypted','ver3-ssoMacroEventsPublicKey',\
+                'ver3-ssoManageCredentialsProgID','msDS-AzBizRule','ver3-ssoAppLaunchScriptURI','groupAttributes','ver3-ssoAppMacro6Type',\
+                'ver3-ssoAppMacro7Parameters','ver3-ssoCanChangePropertyBag','ver3-ssoAppPasswordRule','memberUid','msExchServerAdminDelegationBL',\
+                'ver3-ssoCredentialServiceURL','nonSecurityMember','ver3-ssoAppMacro8Identity','msOrg-OtherDisplayNames','msDS-AzLDAPQuery',\
+                'msDS-AzApplicationData','ver3-ssoAppMacro3URI','ver3-ssoAuthenticationPublicKey','msDS-AzGenericData','ver3-ssoAppChangeScriptURI',\
+                'msDS-AzLastImportedBizRulePath','ver3-ssoAppMacro7','ver3-ssoAppMacro9Identity','ver3-ssoAppMacro7Identity','ver3-ssoAppMacro9URI',\
+                'ver3-ssoPropertyBagEncryption','ver3-ssoAppLaunchScript','ver3-ssoAppMacro3Type','ver3-ssoAppAvailableOffline',\
+                'ver3-ssoAppMacro4Identity','ver3-ssoAppMacro5','owner','reportToOwner','ver3-ssoAppMacro6URI','ver3-ssoCredentialServiceProgID',\
+                'ver3-ssoAppMacro5Type','reportToOriginator','msDS-AzBizRuleLanguage','msOrg-IsOrganizational','oOFReplyToOriginator',\
+                'ver3-ssoAppMacro8URI','ver3-ssoAppDescription','ver3-ssoAuthenticationProgID','ver3-ssoAppMacro5URI','ver3-ssoCanChangeUserName',\
+                'msDS-NonMembers','ver3-ssoAppAdminPrinciple','ver3-ssoAppAccountPrinciple','ver3-ssoAppMacro3Parameters',\
+                'ver3-ssoCanViewPropertyBag','ver3-ssoMacroEventsProgID','ver3-ssoEnabled','ver3-ssoAppLaunchScriptIdentity',\
+                'ver3-ssoAppMacro8Parameters','nTGroupMembers','msExchGroupDepartRestriction','ver3-ssoAppMacro3Identity',\
+                'msExchGroupJoinRestriction','member','ver3-ssoManageCredentialsPublicKey'])

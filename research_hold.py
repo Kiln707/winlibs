@@ -19,12 +19,20 @@ group = ADGroup(identifier="CN=VJOCTR,OU=Security Groups,DC=solano,DC=cc,DC=ca,D
 user = ADUser(identifier="CN=Steven Swanson,OU=Accounts,DC=solano,DC=cc,DC=ca,DC=us")
 computer = ADComputer(identifier="CN=sswanson,OU=NoUpdate,DC=solano,DC=cc,DC=ca,DC=us")
 ou = ADOrganizationalUnit(identifier="OU=Security Groups,DC=solano,DC=cc,DC=ca,DC=us")
-domain_attrs = domain.get_attributes()
-user_attrs = user.get_attributes()
-group_attrs = group.get_attributes()
-computer_attrs = computer.get_attributes()
-ou_attrs = ou.get_attributes()
+domain_attrs = domain.get_mandatory_attributes()
+user_attrs = user.get_mandatory_attributes()
+group_attrs = group.get_mandatory_attributes()
+computer_attrs = computer.get_mandatory_attributes()
+ou_attrs = ou.get_mandatory_attributes()
 
-for attr in group.get_attributes():
-    if attr not in domain_attrs and attr not in user_attrs and attr not in ou_attrs and attr not in computer_attrs:
-        print(attr)
+# attribs = []
+# for attr in domain.get_mandatory_attributes():
+#     if attr not in user_attrs and attr not in group_attrs and attr not in ou_attrs and attr not in computer_attrs:
+#         attribs.append(attr)
+#
+# print("','".join(attribs))
+
+for attr in user_attrs:
+    print(attr, user.get(attr))
+for attr in computer_attrs:
+    print(attr, computer.get(attr))
