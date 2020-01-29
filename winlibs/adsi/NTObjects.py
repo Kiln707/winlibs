@@ -18,10 +18,11 @@ class NTObject(ADSIBaseObject):
         self._adsi_obj = self.adsi_provider.getObject('', self._adsi_path)
     def _set_attributes(self):
         for attr in self.get_attributes():
-            #print(self.get(attr).isSingleValued())
             setattr(self, attr, self.get(attr))
+
     def _valid_protocol(self, protocol):
         return protocol == 'WinNT'
+
     def _generate_adsi_path(self, identifier):
         adsi_path = ''.join((self.default_protocol, '://'))
         if self._server:
@@ -36,8 +37,10 @@ class NTObject(ADSIBaseObject):
             if self._class:
                 adsi_path = ','.join((adsi_path,self._class))
         return adsi_path
+
     def _schema(self):
         return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
+
     def save(self):
         for attr in self.get_attributes():
             if self.get(attr) != getattr(self, attr):
@@ -155,6 +158,7 @@ class NTComputer(NTObject, I_NTContainer):
         return self._file_service
     def __iter__(self):
         return super().__iter__()
+
 class NTUser(NTObject, I_User):
     _class='User'
     _attributes=set(['HomeDirectory', 'PrimaryGroupID', 'UserFlags', 'FullName', 'Parameters', 'Name', 'MinPasswordAge', 'LoginHours',

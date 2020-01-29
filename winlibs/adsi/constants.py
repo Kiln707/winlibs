@@ -3,7 +3,7 @@ GROUP_TYPE = {
     'GLOBAL':0x2,
     'LOCAL':0x4,
     'UNIVERSAL':0x8,
-    'SECURITY_ENABLED':-0x80000000}
+    'SECURITY_ENABLED':-0x80000000,
 }
 
 # http://msdn.microsoft.com/en-us/library/aa772300.aspx

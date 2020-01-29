@@ -1,11 +1,14 @@
-from .Base import ADSIBaseObject
+from .Base import ADSIBaseObject, I_User, I_Group
 from .utils import escape_path
 
 from pywintypes import IID, SID
 
 #   LDAP Section greatly inspired by (taken from) pyad
 class LDAPBaseObject(ADSIBaseObject):
-    default_protocol=''
+    _class = None
+    default_protocol='LDAP'
+    _attributes=None
+    _obj_map={}
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         self.__class__.__name__
@@ -60,8 +63,16 @@ class LDAPBaseObject(ADSIBaseObject):
                 password,
                 flag)
 
+    def _valid_protocol(self, protocol):
+        if not protocol.isupper():
+            protocol = protocol.upper()
+        return protocol == 'LDAP'
+
     def _set_attributes(self):
-        pass
+        for attr in self.get_attributes():
+            if attr == 'type':
+                continue
+            setattr(self, attr, self.get(attr))
 
     def _generate_adsi_path(self, distinguished_name):
         # Generates a proper ADsPath to be used when connecting to an active directory object or when searching active directory.
@@ -78,12 +89,9 @@ class LDAPBaseObject(ADSIBaseObject):
                 ads_path = ':'.join((ads_path,str(self._port)))
             ads_path = ''.join((ads_path,'/'))
         ads_path = ''.join((ads_path,escape_path(distinguished_name)))
-        print(ads_path)
         return ads_path
 
-
 class ADObject(LDAPBaseObject):
-    default_protocol='LDAP'
     _py_ad_object_mappings = {}
 
     # http://msdn.microsoft.com/en-us/library/aa772300.aspx
@@ -150,12 +158,7 @@ class ADObject(LDAPBaseObject):
             self.__class__ = self._py_ad_object_mappings[self._type]
 
     def _schema(self):
-        raise NotImplementedError()
-
-    def _valid_protocol(self, protocol):
-        if not protocol.isupper():
-            protocol = protocol.upper()
-        return protocol == 'LDAP'
+        return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
 
     ###################################
     #   Dict Section
@@ -258,28 +261,28 @@ class ADObject(LDAPBaseObject):
                 nv = nv | ADObject.ADS_USER_FLAG[userFlag]
             self.update_attribute('userAccountControl',nv)
 
-    # def disable(self):
-    #     try:
-    #         if self.get('AccountDisabled') == False:
-    #             self.set('AccountDisabled', True)
-    #     except:
-    #         raise Exception("Cannot Disable this object!")
-    #
-    # def enable(self):
-    #     try:
-    #         if self.get('AccountDisabled') == True:
-    #             self.set('AccountDisabled', False)
-    #     except:
-    #         raise Exception("Cannot enable this object!")
-    #
-    # def _get_password_last_set(self):
-    #     return self._convert_datetime(self.get('pwdLastSet'))
-    #
-    # def get_last_login(self):
-    #     return self._convert_datetime(self.get('lastLogonTimestamp'))
-    #
-    # def get_uSNChanged(self):
-    #     return self._convert_bigint(self.get('uSNChanged'))
+    def disable(self):
+        try:
+            if self.get('AccountDisabled') == False:
+                self.set('AccountDisabled', True)
+        except:
+            raise Exception("Cannot Disable this object!")
+
+    def enable(self):
+        try:
+            if self.get('AccountDisabled') == True:
+                self.set('AccountDisabled', False)
+        except:
+            raise Exception("Cannot enable this object!")
+
+    def _get_password_last_set(self):
+        return self._convert_datetime(self.get('pwdLastSet'))
+
+    def get_last_login(self):
+        return self._convert_datetime(self.get('lastLogonTimestamp'))
+
+    def get_uSNChanged(self):
+        return self._convert_bigint(self.get('uSNChanged'))
 
     def move(self, new_ou_object):
         # Moves the object to a new organizationalUnit.
@@ -329,6 +332,12 @@ class ADObject(LDAPBaseObject):
         else:
             parent.remove_child(self)
 
+    def save(self):
+        for attr in self.get_attributes():
+            if self.get(attr) != getattr(self, attr):
+                self.update(attr, getattr(self, attr))
+        self._flush()
+
     ############################################
     #   LDAP Specific Properties
     ############################################
@@ -349,6 +358,16 @@ class ADObject(LDAPBaseObject):
     sid = property(fget=__get_object_sid,
                     doc='Get the SID of the Active Directory object')
     parent_container = property(__get_parent_container, doc="Object representing the container in which this object lives")
+
+    @classmethod
+    def set_ADObj(cls, obj):
+        o = ADObject(adsi_com_object=obj)
+        fingerprint = set( o.get_attributes() )
+        for c,k in cls._obj_map.items():
+            if k._attributes:
+                if not fingerprint ^ k._attributes:
+                    o.__class__ = k
+        return o
 
 ##################################################
 #   Object to interface with GlobalCatalogObject #
@@ -393,17 +412,55 @@ class I_ADContainer(ADObject):
         for obj in self._adsi_obj:
             yield ADObject(adsi_com_object=obj)
 
+##################################################
+#   AD Objects
+##################################################
+class ADSchema(I_ADContainer):
+    _class='Schema'
+    def __init__(self, schema_class, identifier=None, adsi_com_object=None, options={}):
+        super(NTObject, self).__init__(identifier, adsi_com_object, options)
+        self._schema_class=schema_class
+    def __iter__(self):
+        return super().__iter__(self)
+    def _init_schema(self):
+        if self._scheme_obj is None:
+            self._scheme_obj = self._adsi_obj
+    def __repr__(self):
+        return "< %(class)s for Class: %(name)s >"%{'class':self.__class__.__name__, 'name':self._schema_class}
+
 class ADDomain(I_ADContainer):
+    _class='Domain'
+    _attributes=set(['dc',])
     def get_default_upn(self):
         # Returns the default userPrincipalName for the domain.
         self._adsi_obj.GetInfoEx(["canonicalName",],0)
         return self._adsi_obj.get("canonicalName").rstrip('/')
 
-class ADComputer():
-    pass
+class ADOrganizationalUnit(I_ADContainer):
+    _class='OrganizationalUnit'
+    _attributes=set(['uPNSuffixes', 'searchGuide', 'defaultGroup'])
 
-class ADUser():
-    pass
+ADOU = ADOrganizationalUnit
 
-class ADGroup():
-    pass
+class ADComputer(ADObject):
+    _class='Computer'
+    _attributes=set(['msTSEndpointType', 'operatingSystemVersion','msDS-isGC','promoExpiration','dNSHostName','msTSSecondaryDesktopBL',\
+                'policyReplicationFlags','msDS-ExecuteScriptPassword','ipHostNumber','msTPM-TpmInformationForComputer','nisMapName',\
+                'msDS-isRODC','monitoringMailUpdateUnits','siteGUID','msTSEndpointPlugin','netbootSIFFile','machineRole',\
+                'physicalLocationObject','msDS-KrbTgtLink','operatingSystemServicePack','msSFU30Aliases','msDS-NeverRevealGroup',\
+                'monitoringCachedViaRPC','enatelKeysData','monitoredServices','msDS-IsUserCachableAtRodc','msDS-PromotionSettings',\
+                'msExchExchangeServerLink','msDS-GenerationId','monitoredConfigurations','msDS-SiteName','msDS-RevealedUsers',\
+                'msImaging-ThumbprintHash','operatingSystemHotfix','monitoringAvailabilityWindow','operatingSystem','monitoringCachedViaMail',\
+                'monitoringMailUpdateInterval','msTSPrimaryDesktopBL','netbootInitialization','volumeCount','msTPM-OwnerInformation',\
+                'localPolicyFlags','catalogs','msImaging-HashAlgorithm','trackingLogPathName','netbootGUID','msDS-AdditionalDnsHostName',\
+                'netbootDUID','msTSEndpointData','msDS-RevealOnDemandGroup','msDS-HostServiceAccount','msDS-AdditionalSamAccountName',\
+                'monitoringAvailabilityStyle' ,'logRolloverInterval' ,'msDS-RevealedList','netbootMachineFilePath' ,'monitoringRPCUpdateUnits',\
+                'rIDSetReferences' ,'monitoringRPCUpdateInterval' ,'netbootMirrorDataFile'])
+
+class ADUser(ADObject, I_User):
+    _class='User'
+    #_attributes=
+
+class ADGroup(ADObject, I_Group):
+    _class='Group'
+    #_attributes=

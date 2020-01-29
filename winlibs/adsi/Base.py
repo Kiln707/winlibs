@@ -248,6 +248,7 @@ class ADSIBaseObject(object):
 
 #################################################################################################################
 #   TODO: Implement xml dump
+#################################################################################################################
     def dump_to_xml(self, whitelist_attributes=[], blacklist_attributes=[]):
         raise NotImplementedError()
         """Dumps object and all human-readable attributes to an xml document which is returned as a string."""
@@ -359,7 +360,6 @@ class I_User(ADSIBaseObject):
     def _groups(self):
         return self._adsi_obj.Groups()
     def set_password(self, password):
-        assert type(password) is str, "Password must be string"
         self._adsi_obj.SetPassword(password)
 
 class I_Group(ADSIBaseObject):
