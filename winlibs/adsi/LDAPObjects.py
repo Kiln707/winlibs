@@ -1,4 +1,4 @@
-from .Base import ADSIBaseObject, I_User, I_Group
+ADfrom .Base import ADSIBaseObject, I_User, I_Group
 from .utils import escape_path
 
 from pywintypes import IID, SID
@@ -94,71 +94,16 @@ class LDAPBaseObject(ADSIBaseObject):
 class ADObject(LDAPBaseObject):
     _py_ad_object_mappings = {}
 
-    # http://msdn.microsoft.com/en-us/library/aa772300.aspx
-    ADS_USER_FLAG = {
-    'SCRIPT':0x1,
-    'ACCOUNTDISABLE':0x2,
-    'HOMEDIR_REQUIRED':0x8,
-    'LOCKOUT':0x10,
-    'PASSWD_NOTREQD':0x20,
-    'PASSWD_CANT_CHANGE':0x40,
-    'ENCRYPTED_TEXT_PASSWORD_ALLOWED':0x80,
-    'TEMP_DUPLICATE_ACCOUNT':0x100,
-    'NORMAL_ACCOUNT':0x200,
-    'INTERDOMAIN_TRUST_ACCOUNT':0x800,
-    'WORKSTATION_TRUST_ACCOUNT':0x1000,
-    'SERVER_TRUST_ACCOUNT':0x2000,
-    'DONT_EXPIRE_PASSWD':0x10000,
-    'MNS_LOGON_ACCOUNT':0x20000,
-    'SMARTCARD_REQUIRED':0x40000,
-    'TRUSTED_FOR_DELEGATION':0x80000,
-    'NOT_DELEGATED':0x100000,
-    'USE_DES_KEY_ONLY':0x200000,
-    'DONT_REQUIRE_PREAUTH':0x400000,
-    'PASSWORD_EXPIRED':0x800000,
-    'TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION':0x1000000}
-
-    TYPE_MAPPPINGS = {
-    "Person":"user",
-    "Organizational-Unit":"organizationalUnit",
-    "Domain-DNS":"domain"}
-
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super().__init__(identifier, adsi_com_object, options)
         self.__distinguished_name = self.get('distinguishedName')
         self.__object_guid = self.get('objectGUID')
         self._gc_obj = None
-        self._type=None
         if self.__object_guid is not None:
             self.__object_guid = self._convert_guid(self.__object_guid)
-        # Set ADObject Type
-        occn = self.get('objectCategory')
-        if occn:
-            # pull out CN from DN
-            object_category_cn = occn.split('=',1)[1].split(",",1)[0]
-            # some object categories are not very human readable
-            # so we provide the option to override
-            if object_category_cn in ADObject.TYPE_MAPPPINGS:
-                self._type = ADObject.TYPE_MAPPPINGS[object_category_cn]
-            else:
-                self._type = object_category_cn.lower()
-        else:
-            # Sometimes you don't have access to objectCategory attribute,
-            # try, with objectClass attribute
-            objClass = self.get_attribute('objectClass',True)
-            if 'domain' in objClass:
-                self._type = 'domain'
-            elif 'user' in objClass:
-                self._type = 'user'
-            elif 'organizationalUnit' in objClass:
-                self._type = 'organizationalUnit'
-            else:
-                self._type = 'unknown'
-        if self._type in list(self._py_ad_object_mappings.keys()):
-            self.__class__ = self._py_ad_object_mappings[self._type]
 
     def _schema(self):
-        return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
+        return ADSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
 
     ###################################
     #   Dict Section
@@ -349,8 +294,6 @@ class ADObject(LDAPBaseObject):
                     doc="Object GUID of the object")
     adsPath = property(fget=lambda self: self.__ads_path,
                     doc="ADsPath of Active Directory object (such as 'LDAP://cn=me,...,dc=com'")
-    type = property(fget=lambda self: self._type,
-                    doc="pyAD object type (user, computer, group, organizationalUnit, domain).")
     parent_container_path = property(fget=lambda self: ','.join(self.dn.split(',',1)[1:]),
                     doc="Returns the DN of the object's parent container.")
     guid_str = property(fget=lambda self: str(self.guid)[1:-1],
@@ -362,11 +305,10 @@ class ADObject(LDAPBaseObject):
     @classmethod
     def set_ADObj(cls, obj):
         o = ADObject(adsi_com_object=obj)
-        fingerprint = set( o.get_attributes() )
+        fingerprint = o.get_attribute('objectCategory')
         for c,k in cls._obj_map.items():
-            if k._attributes:
-                if not fingerprint ^ k._attributes:
-                    o.__class__ = k
+            if c == fingerprint:
+                o.__class__ = k
         return o
 
 ##################################################
@@ -416,12 +358,10 @@ class I_ADContainer(ADObject):
 #   AD Objects
 ##################################################
 class ADSchema(I_ADContainer):
-    _class='Schema'
-    def __init__(self, schema_class, identifier=None, adsi_com_object=None, options={}):
-        super(NTObject, self).__init__(identifier, adsi_com_object, options)
-        self._schema_class=schema_class
-    def __iter__(self):
-        return super().__iter__(self)
+    def __init__(self, schema_class=None, identifier=None, adsi_com_object=None, options={}):
+        super(ADObject, self).__init__(identifier, adsi_com_object, options)
+        if schema_class:
+            self._schema_class=schema_class
     def _init_schema(self):
         if self._scheme_obj is None:
             self._scheme_obj = self._adsi_obj
@@ -429,61 +369,25 @@ class ADSchema(I_ADContainer):
         return "< %(class)s for Class: %(name)s >"%{'class':self.__class__.__name__, 'name':self._schema_class}
 
 class ADDomain(I_ADContainer):
-    _class='Domain'
-    _attributes=set(['dc',])
+    _objectCategory="Domain-DNS"
     def get_default_upn(self):
         # Returns the default userPrincipalName for the domain.
         self._adsi_obj.GetInfoEx(["canonicalName",],0)
         return self._adsi_obj.get("canonicalName").rstrip('/')
 
 class ADOrganizationalUnit(I_ADContainer):
-    _class='OrganizationalUnit'
-    _attributes=set(['uPNSuffixes', 'searchGuide', 'defaultGroup'])
+    _objectCategory = "Organizational-Unit"
 
 ADOU = ADOrganizationalUnit
 
 class ADComputer(ADObject):
-    _class='Computer'
-    _attributes=set(['msTSEndpointType', 'operatingSystemVersion','msDS-isGC','promoExpiration','dNSHostName','msTSSecondaryDesktopBL',\
-                'policyReplicationFlags','msDS-ExecuteScriptPassword','ipHostNumber','msTPM-TpmInformationForComputer','nisMapName',\
-                'msDS-isRODC','monitoringMailUpdateUnits','siteGUID','msTSEndpointPlugin','netbootSIFFile','machineRole',\
-                'physicalLocationObject','msDS-KrbTgtLink','operatingSystemServicePack','msSFU30Aliases','msDS-NeverRevealGroup',\
-                'monitoringCachedViaRPC','enatelKeysData','monitoredServices','msDS-IsUserCachableAtRodc','msDS-PromotionSettings',\
-                'msExchExchangeServerLink','msDS-GenerationId','monitoredConfigurations','msDS-SiteName','msDS-RevealedUsers',\
-                'msImaging-ThumbprintHash','operatingSystemHotfix','monitoringAvailabilityWindow','operatingSystem','monitoringCachedViaMail',\
-                'monitoringMailUpdateInterval','msTSPrimaryDesktopBL','netbootInitialization','volumeCount','msTPM-OwnerInformation',\
-                'localPolicyFlags','catalogs','msImaging-HashAlgorithm','trackingLogPathName','netbootGUID','msDS-AdditionalDnsHostName',\
-                'netbootDUID','msTSEndpointData','msDS-RevealOnDemandGroup','msDS-HostServiceAccount','msDS-AdditionalSamAccountName',\
-                'monitoringAvailabilityStyle' ,'logRolloverInterval' ,'msDS-RevealedList','netbootMachineFilePath' ,'monitoringRPCUpdateUnits',\
-                'rIDSetReferences' ,'monitoringRPCUpdateInterval' ,'netbootMirrorDataFile'])
+    _objectCategory = Computer"
 
 class ADUser(ADObject, I_User):
-    _class='User'
-    #_attributes=
+    _objectCategory = "Person"
 
 class ADGroup(ADObject, I_Group):
-    _class='Group'
-    _attributes=set(['msExchMasterAccountHistory','msOrg-Leaders','ver3-ssoAppHideFromApplicationList','ver3-ssoAppAdminScriptIdentity',\
-                'ver3-ssoAppMacro5Parameters','ver3-ssoAppAdminScript','ver3-ssoAppChangeScriptType','groupType','ver3-ssoAppMacro6Identity',\
-                'ver3-ssoAppMacro6','ver3-ssoAppMacro4URI','ver3-ssoAppMacro4Parameters','ver3-ssoAppMacro9Parameters','ver3-ssoAppMacro4',\
-                'ver3-ssoPropertyBag','ver3-ssoAppMacro7Type','ver3-ssoAppMacro8','ver3-ssoAppMacro9','msSFU30PosixMember',\
-                'ver3-ssoCanViewPassword','msDS-AzObjectGuid','ver3-ssoAppAdminScriptURI','primaryGroupToken','ver3-ssoCanChangePassword',\
-                'ver3-ssoAppLaunchScriptType','ciscoEcsbuVoiceEnabled','ver3-ssoAppMacro6Parameters','ver3-ssoAppMacro8Type',\
-                'ver3-ssoAppChangeScriptIdentity','ver3-ssoAppMacro3','ver3-ssoAppAdminScriptParameters','ver3-ssoCredentialServicePublicKey',\
-                'ver3-ssoCanViewUserName','ver3-ssoPropertyBagCompressed','ver3-ssoAppLaunchScriptParameters','ver3-ssoAppAdminScriptType',\
-                'ver3-ssoAppChangeScript','ver3-ssoAppMacro7URI','ver3-ssoAppChangeScriptParameters','ver3-ssoAppMacro4Type','hideDLMembership',\
-                'ver3-ssoAppMacro5Identity','ver3-ssoAppClass','msOrg-GroupSubtypeName','msExchCoManagedByLink','ver3-ssoAppName',\
-                'ver3-ssoAppMacro9Type','dLMemberRule','ver3-ssoPropertyBagEncrypted','ver3-ssoMacroEventsPublicKey',\
-                'ver3-ssoManageCredentialsProgID','msDS-AzBizRule','ver3-ssoAppLaunchScriptURI','groupAttributes','ver3-ssoAppMacro6Type',\
-                'ver3-ssoAppMacro7Parameters','ver3-ssoCanChangePropertyBag','ver3-ssoAppPasswordRule','memberUid','msExchServerAdminDelegationBL',\
-                'ver3-ssoCredentialServiceURL','nonSecurityMember','ver3-ssoAppMacro8Identity','msOrg-OtherDisplayNames','msDS-AzLDAPQuery',\
-                'msDS-AzApplicationData','ver3-ssoAppMacro3URI','ver3-ssoAuthenticationPublicKey','msDS-AzGenericData','ver3-ssoAppChangeScriptURI',\
-                'msDS-AzLastImportedBizRulePath','ver3-ssoAppMacro7','ver3-ssoAppMacro9Identity','ver3-ssoAppMacro7Identity','ver3-ssoAppMacro9URI',\
-                'ver3-ssoPropertyBagEncryption','ver3-ssoAppLaunchScript','ver3-ssoAppMacro3Type','ver3-ssoAppAvailableOffline',\
-                'ver3-ssoAppMacro4Identity','ver3-ssoAppMacro5','owner','reportToOwner','ver3-ssoAppMacro6URI','ver3-ssoCredentialServiceProgID',\
-                'ver3-ssoAppMacro5Type','reportToOriginator','msDS-AzBizRuleLanguage','msOrg-IsOrganizational','oOFReplyToOriginator',\
-                'ver3-ssoAppMacro8URI','ver3-ssoAppDescription','ver3-ssoAuthenticationProgID','ver3-ssoAppMacro5URI','ver3-ssoCanChangeUserName',\
-                'msDS-NonMembers','ver3-ssoAppAdminPrinciple','ver3-ssoAppAccountPrinciple','ver3-ssoAppMacro3Parameters',\
-                'ver3-ssoCanViewPropertyBag','ver3-ssoMacroEventsProgID','ver3-ssoEnabled','ver3-ssoAppLaunchScriptIdentity',\
-                'ver3-ssoAppMacro8Parameters','nTGroupMembers','msExchGroupDepartRestriction','ver3-ssoAppMacro3Identity',\
-                'msExchGroupJoinRestriction','member','ver3-ssoManageCredentialsPublicKey'])
+    _objectCategory = "Group"
+
+ADObject._obj_map={ADDomain._objectCategory:ADDomain, ADComputer._objectCategory:ADComputer, ADUser._objectCategory:ADUser,
+ADGroup._objectCategory:ADGroup, ADOrganizationalUnit._objectCategory:ADOrganizationalUnit}

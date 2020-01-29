@@ -39,7 +39,7 @@ class NTObject(ADSIBaseObject):
         return adsi_path
 
     def _schema(self):
-        return NTSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
+        return NTSchema(schema_class=self.__class__.__name__, adsi_com_object=self._scheme_obj)
 
     def save(self):
         for attr in self.get_attributes():
@@ -250,9 +250,10 @@ class NTResource(NTObject):
 
 class NTSchema(NTObject, I_NTContainer):
     _class='Schema'
-    def __init__(self, schema_class, identifier=None, adsi_com_object=None, options={}):
+    def __init__(self, schema_class=None, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-        self._schema_class=schema_class
+        if schema_class:
+            self._schema_class=schema_class
     def __iter__(self):
         return super().__iter__(self)
     def _init_schema(self):
