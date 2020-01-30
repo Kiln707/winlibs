@@ -20,11 +20,3 @@ user = ADUser(identifier="CN=Steven Swanson,OU=Accounts,DC=solano,DC=cc,DC=ca,DC
 computer = ADComputer(identifier="CN=sswanson,OU=NoUpdate,DC=solano,DC=cc,DC=ca,DC=us")
 ou = ADOrganizationalUnit(identifier="OU=Security Groups,DC=solano,DC=cc,DC=ca,DC=us")
 obj = ADSchema(identifier="CN=Schema,CN=Configuration,DC=solano,DC=cc,DC=ca,DC=us")
-
-
-print("domain", domain.objectCategory)
-print("group", group.objectCategory)
-print("user", user.objectCategory)
-print("computer", computer.objectCategory)
-print("ou", ou.objectCategory)
-print("schema", ou.objectCategory)

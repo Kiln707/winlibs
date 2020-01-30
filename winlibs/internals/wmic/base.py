@@ -1,0 +1,3 @@
+
+class WMICBase():
+    pass

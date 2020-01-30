@@ -1,18 +1,22 @@
-ADfrom .Base import ADSIBaseObject, I_User, I_Group
+from .Base import ADSIBaseObject, I_User, I_Group
 from .utils import escape_path
 
 from pywintypes import IID, SID
 
 #   LDAP Section greatly inspired by (taken from) pyad
-class LDAPBaseObject(ADSIBaseObject):
+class ADObject(ADSIBaseObject):
     _class = None
     default_protocol='LDAP'
     _attributes=None
     _obj_map={}
 
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        self.__class__.__name__
         super().__init__(identifier, adsi_com_object, options)
+        self.__distinguished_name = self.get('distinguishedName')
+        self.__object_guid = self.get('objectGUID')
+        self._gc_obj = None
+        if self.__object_guid is not None:
+            self.__object_guid = self._convert_guid(self.__object_guid)
 
     def _set_adsi_obj(self):
         if self._username and self._password:
@@ -90,17 +94,6 @@ class LDAPBaseObject(ADSIBaseObject):
             ads_path = ''.join((ads_path,'/'))
         ads_path = ''.join((ads_path,escape_path(distinguished_name)))
         return ads_path
-
-class ADObject(LDAPBaseObject):
-    _py_ad_object_mappings = {}
-
-    def __init__(self, identifier=None, adsi_com_object=None, options={}):
-        super().__init__(identifier, adsi_com_object, options)
-        self.__distinguished_name = self.get('distinguishedName')
-        self.__object_guid = self.get('objectGUID')
-        self._gc_obj = None
-        if self.__object_guid is not None:
-            self.__object_guid = self._convert_guid(self.__object_guid)
 
     def _schema(self):
         return ADSchema(self.__class__.__name__, adsi_com_object=self._scheme_obj)
@@ -288,7 +281,7 @@ class ADObject(LDAPBaseObject):
     ############################################
     dn = property(fget=lambda self: self.__distinguished_name,
                     doc="Distinguished Name (DN) of the object")
-    prefixed_cn = property(fget=__get_prefixed_cn,
+    prefixed_cn = property(fget=self.__get_prefixed_cn,
                     doc="Prefixed CN (such as 'cn=mycomputer' or 'ou=mycontainer' of the object")
     guid = property(fget=lambda self: self.__object_guid,
                     doc="Object GUID of the object")
@@ -331,18 +324,6 @@ class GlobalCatalogObject(LDAPBaseObject):
 #   AD Based Interfaces
 ##################################################
 class I_ADContainer(ADObject):
-    def _copy_here(self, obj_path, new_name=None):
-        self._adsi_obj.CopyHere(obj_path, new_name)
-    def _create(self, class_type, name):
-        return self._adsi_obj.Create(class_type, name)
-    def _delete(self, class_type, name):
-        self._adsi_obj.Delete(class_type, name)
-    def _get_object(self, class_type, name):
-        return self._adsi_obj.GetObject(class_type, name)
-    def _move_here(self, source, new_name=None):
-        self._adsi_obj.MoveHere(source, new_name)
-    def move_here(self, source, new_name=None):
-        self._move_here(source.dn, new_name)
     def get_children(self, recursive=False, filter_=None):
         for obj in self:
             if obj.type == 'organizationalUnit' and recursive:
@@ -352,7 +333,13 @@ class I_ADContainer(ADObject):
                 yield obj
     def __iter__(self):
         for obj in self._adsi_obj:
-            yield ADObject(adsi_com_object=obj)
+            yield ADObject.set_ADObj(obj)
+    def get_object(self, class_type, name):
+        return ADObject.set_ADObj(self._get_object(class_type, name))
+    def _get_list(self, classType):
+        for i in self:
+            if i._objectCategory == classType:
+                yield i
 
 ##################################################
 #   AD Objects
@@ -374,6 +361,20 @@ class ADDomain(I_ADContainer):
         # Returns the default userPrincipalName for the domain.
         self._adsi_obj.GetInfoEx(["canonicalName",],0)
         return self._adsi_obj.get("canonicalName").rstrip('/')
+    def user(self, name):
+        return NTUser(adsi_com_object=self._get_object(class_type=NTUser._class, name=name))
+    def group(self, name):
+        return NTGroup(adsi_com_object=self._get_object(class_type=NTGroup._class, name=name))
+    def computer(self, name):
+        return NTComputer(adsi_com_object=self._get_object(class_type=NTComputer._class, name=name))
+    def get_users(self):
+        return self._get_list(NTUser._class)
+    def get_groups(self):
+        return self._get_list(NTGroup._class)
+    def get_computers(self):
+        return self._get_list(NTComputer._class)
+    def get_printers(self):
+        return self._get_list(NTPrintQueue._class)
 
 class ADOrganizationalUnit(I_ADContainer):
     _objectCategory = "Organizational-Unit"
@@ -381,7 +382,7 @@ class ADOrganizationalUnit(I_ADContainer):
 ADOU = ADOrganizationalUnit
 
 class ADComputer(ADObject):
-    _objectCategory = Computer"
+    _objectCategory = "Computer"
 
 class ADUser(ADObject, I_User):
     _objectCategory = "Person"
