@@ -304,13 +304,12 @@ class ADObject(ADSIBaseObject):
         fingerprint = o.get('objectCategory')
         if not fingerprint:
             return o
-        if ADSchema._objectCategory in fingerprint:
-            o.__class__ = ADSchema
-            return o
-        fingerprint = fingerprint.split(',')[0]
+        fingerprint_prefix = fingerprint.split(',')[0]
         for c,k in cls._obj_map.items():
-            if c == fingerprint:
+            if c == fingerprint_prefix:
                 o.__class__ = k
+        if not o._objectCategory and ADSchema._objectCategory in fingerprint:
+            o.__class__ = ADSchema
         return o
 
 ##################################################
@@ -381,14 +380,17 @@ class I_ADContainer(ADObject):
 class ADSchema(I_ADContainer):
     _objectCategory="CN=Schema"
     def __init__(self, schema_class=None, identifier=None, adsi_com_object=None, options={}):
-        super(ADObject, self).__init__(identifier, adsi_com_object, options)
-        if schema_class:
-            self._schema_class=schema_class
+        super(I_ADContainer, self).__init__(identifier, adsi_com_object, options)
+        self.schema_class = schema_class
     def _init_schema(self):
         if self._scheme_obj is None:
             self._scheme_obj = self._adsi_obj
     def __repr__(self):
-        return "< %(class)s for Class: %(name)s >"%{'class':self.__class__.__name__, 'name':self._schema_class}
+        try:
+            if self.schema_class:
+                return "< %(class)s for Class: %(name)s >"%{'class':self.__class__.__name__, 'name':self.schema_class}
+        except:
+            return super(I_ADContainer, self).__repr__()
 
 class ADDomain(I_ADContainer):
     _objectCategory="CN=Domain-DNS"

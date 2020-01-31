@@ -68,6 +68,16 @@ class I_NTContainer(I_Container):
             yield NTObject.set_NTObj(obj)
     def get_object(self, class_type, name):
         return NTObject.set_NTObj(self._get_object(class_type, name))
+    def copy_here(self, obj, new_name=None):
+        self._copy_here(obj.get(''), new_name)
+    def create(self, class_type, name):
+        return self._adsi_obj.Create(class_type, name)
+    def delete(self, class_type, name):
+        self._adsi_obj.Delete(class_type, name)
+    def _get_object(self, class_type, name):
+        return self._adsi_obj.GetObject(class_type, name)
+    def _move_here(self, source, new_name=None):
+        self._adsi_obj.MoveHere(source, new_name)
     def _get_list(self, classType):
         for i in self:
             if i._class == classType:

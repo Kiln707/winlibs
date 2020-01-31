@@ -322,6 +322,10 @@ class ADSIBaseObject(object):
         except:
             return "<%(class)s>"%{'class':self.__class__.__name__}
 
+    def __str__(self):
+        print(self.__repr__())
+        return self.__repr__()
+
 def set_defaults(**kwargs):
     for k, v in kwargs.items():
         setattr(WinBase, '_'.join(('default', k)), v)
