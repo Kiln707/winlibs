@@ -13,6 +13,7 @@ class NTObject(ADSIBaseObject):
         if 'protocol' in options:
             del options['protocol']
         super().__init__(identifier, adsi_com_object, options)
+        self.set_NTObj(self)
     def _set_adsi_obj(self):
         #Create connection to ADSI
         self._adsi_obj = self.adsi_provider.getObject('', self._adsi_path)
@@ -48,7 +49,10 @@ class NTObject(ADSIBaseObject):
         self._flush()
     @classmethod
     def set_NTObj(cls, obj):
-        o = NTObject(adsi_com_object=obj)
+        if not isinstance(obj, ADObject):
+            o = ADObject(adsi_com_object=obj)
+        else:
+            o = obj
         fingerprint = set( o.get_attributes() )
         for c,k in cls._obj_map.items():
             if k._attributes:
@@ -93,11 +97,11 @@ class NTDomain(NTObject, I_NTContainer):
     def __init__(self, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier=None, adsi_com_object=adsi_com_object, options=options)
     def user(self, name):
-        return NTUser(adsi_com_object=self._get_object(class_type=NTUser._class, name=name))
+        return self.get_object(class_type=NTUser._class, name=name)
     def group(self, name):
-        return NTGroup(adsi_com_object=self._get_object(class_type=NTGroup._class, name=name))
+        return self.get_object(class_type=NTGroup._class, name=name)
     def computer(self, name):
-        return NTComputer(adsi_com_object=self._get_object(class_type=NTComputer._class, name=name))
+        return self.get_object(class_type=NTComputer._class, name=name)
     def get_users(self):
         return self._get_list(NTUser._class)
     def get_groups(self):
@@ -118,13 +122,13 @@ class NTComputer(NTObject, I_NTContainer):
     def status(self):
         return self._adsi_obj.Status()
     def user(self, name):
-        return NTUser(adsi_com_object=self._get_object(class_type=NTUser._class, name=name))
+        return self.get_object(class_type=NTUser._class, name=name)
     def group(self, name):
-        return NTGroup(adsi_com_object=self._get_object(class_type=NTGroup._class, name=name))
+        return self.get_object(class_type=NTGroup._class, name=name)
     def printer(self, name):
-        return NTPrintQueue(adsi_com_object=self._get_object(class_type=NTPrintQueue._class, name=name))
+        return self.get_object(class_type=NTPrintQueue._class, name=name)
     def service(self, name):
-        return NTService(adsi_com_object=self._get_object(class_type=NTService._class, name=name))
+        return self.get_object(class_type=NTService._class, name=name)
     def get_users(self):
         return self._get_list(NTUser._class)
     def get_groups(self):
@@ -209,11 +213,16 @@ class NTGroup(NTObject, I_Group):
     _attributes=set(['groupType', 'Name', 'objectSid', 'Description'])
     def __init__(self, identifier=None, adsi_com_object=None, options={}):
         super(NTObject, self).__init__(identifier, adsi_com_object, options)
-    def members(self):
+    def __iter__(self):
         for obj in self._members():
             yield NTObject.set_NTObj(obj)
-    def __iter__(self):
-        return self.members()
+    def members(self):
+        for obj in self:
+            try:
+                for o in obj.members():
+                    yield o
+            except AttributeError:
+                yield obj
 
 class NTPrintQueue(NTObject, I_PrintQueueOperations):
     _class='PrintQueue'

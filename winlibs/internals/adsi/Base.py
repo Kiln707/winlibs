@@ -205,17 +205,17 @@ class ADSIBaseObject(object):
             self.set(attribute, value)
 
     def append(self, attribute, values):
-        difference = list( set(self.__generate_list(values)) - set(self.get_attribute(attribute)) )
+        difference = list( set(self.__generate_list(values)) - set(self.get(attribute)) )
         if len(difference) != 0:
             self._set_attribute(attribute, IADS_ACTION.APPEND, difference)
 
     def remove(self, attribute, values):
-        difference = list( set(self.__generate_list(values)) & set(self.get_attribute(attribute)) )
+        difference = list( set(self.__generate_list(values)) & set(self.get(attribute)) )
         if len(difference) != 0:
             self._set_attribute(attribute, IADS_ACTION.DELETE, difference)
 
     def delete(self, attribute):
-        if self.get_attribute != None:
+        if self.get(attribute) != None:
             self._set_attribute(attribute, IADS_ACTION.CLEAR, [])
 
     def save(self):
@@ -265,7 +265,7 @@ class ADSIBaseObject(object):
         for attribute in attributes:
             node = doc.createElement("attribute")
             node.setAttribute("name", attribute)
-            value = self.get_attribute(attribute,False)
+            value = self.get(attribute)
             if str(type(value)).split("'",2)[1] not in ('buffer','instance') and value is not None:
                 if type(value) is not list:
                     try:

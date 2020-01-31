@@ -1,4 +1,4 @@
-from ..adsi import ADUser, NTUser
+from ..internals.adsi import ADUser, NTUser
 
 class User():
     def __init__(self):
