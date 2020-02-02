@@ -1,3 +1,11 @@
+from wmi import WMI
 
-class WMICBase():
-    pass
+class WMIRoot():
+    _Namespace=None
+
+    def __init__(self, host='localhost', username='', password=''):
+        self.wmi
+        if host == 'localhost':
+            self.wmi = WMI()
+        else:
+            self.wmi = WMI(host)
